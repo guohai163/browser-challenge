@@ -184,3 +184,41 @@ proxy_set_header X-H2-PRIORITY $http_x_h2_priority;
 2. 防重放从内存迁移到 Redis（分布式部署必做）。
 3. 根据风险分动态调整 PoW 难度。
 4. 为 Gydev 开关增加配置中心热更新能力（灰度发布）。
+
+## 11. Docker Compose 一键运行（Spring + Envoy + Wasm）
+
+项目根目录已提供：
+
+- `docker-compose.yml`
+- `script/Dockerfile.envoy`（多阶段构建，自动编译 `h2_fp.wasm`）
+- `script/gen-certs.sh`（生成 Envoy 自签证书）
+
+启动：
+
+```bash
+docker compose up --build -d
+```
+
+查看状态：
+
+```bash
+docker compose ps
+```
+
+验证 Envoy 配置：
+
+```bash
+docker compose exec envoy envoy --mode validate -c /etc/envoy/envoy.yml
+```
+
+访问：
+
+- Spring 直连：`http://localhost:8080`
+- 经 Envoy TLS：`https://localhost`（自签证书，浏览器会提示不受信任）
+- Envoy Admin：`http://localhost:9901`
+
+停止：
+
+```bash
+docker compose down
+```

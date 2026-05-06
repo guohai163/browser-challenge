@@ -1,0 +1,119 @@
+admin:
+  access_log_path: /tmp/admin_access.log
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9901
+
+static_resources:
+  listeners:
+    - name: https_listener
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 443
+      listener_filters:
+        # 必须先解析 HAProxy PROXY v2
+        - name: envoy.filters.listener.proxy_protocol
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.listener.proxy_protocol.v3.ProxyProtocol
+        # 再做 TLS 指纹探测
+        - name: envoy.filters.listener.tls_inspector
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.listener.tls_inspector.v3.TlsInspector
+            enable_ja3_fingerprinting: true
+            enable_ja4_fingerprinting: true
+
+      filter_chains:
+        - transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              common_tls_context:
+                alpn_protocols: ["h2", "http/1.1"]
+                tls_certificates:
+                  - certificate_chain:
+                      filename: /etc/envoy/certs/fullchain1.pem
+                    private_key:
+                      filename: /etc/envoy/certs/privkey1.pem
+
+          filters:
+            # Extract real downstream H2 fingerprint fields into dynamic metadata:
+            # namespace=gydev.h2, keys=fp/settings/window/priority.
+            - name: envoy.filters.network.wasm
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.wasm.v3.Wasm
+                config:
+                  config:
+                    name: h2_fingerprint_extractor
+                    root_id: h2_fingerprint_extractor
+                    vm_config:
+                      vm_id: h2_fingerprint_vm
+                      runtime: envoy.wasm.runtime.v8
+                      code:
+                        local:
+                          filename: /etc/envoy/plugins/h2_fp.wasm
+                      allow_precompiled: true
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_https
+                codec_type: AUTO
+                use_remote_address: true
+                xff_num_trusted_hops: 0
+
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: backend
+                      domains: ["*"]
+                      routes:
+                        - match: { prefix: "/" }
+                          route:
+                            cluster: nginx_upstream
+
+                      request_headers_to_add:
+                        - header:
+                            key: X-JA3
+                            value: "%TLS_JA3_FINGERPRINT%"
+                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                        - header:
+                            key: X-JA4
+                            value: "%TLS_JA4_FINGERPRINT%"
+                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
+
+                        - header:
+                            key: X-H2-FP
+                            value: "%DYNAMIC_METADATA(gydev.h2:fp):Z%"
+                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                        - header:
+                            key: X-H2-SETTINGS
+                            value: "%DYNAMIC_METADATA(gydev.h2:settings):Z%"
+                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                        - header:
+                            key: X-H2-WINDOW
+                            value: "%DYNAMIC_METADATA(gydev.h2:window):Z%"
+                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                        - header:
+                            key: X-H2-PRIORITY
+                            value: "%DYNAMIC_METADATA(gydev.h2:priority):Z%"
+                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
+
+                http_filters:
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+  clusters:
+    - name: nginx_upstream
+      connect_timeout: 3s
+      type: STRICT_DNS
+      load_assignment:
+        cluster_name: nginx_upstream
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: spring-app
+                      port_value: 8080

@@ -1,0 +1,37 @@
+services:
+  certgen:
+    image: alpine/openssl:3.3.2
+    container_name: browser-challenge-certgen
+    command: ["/bin/sh", "-c", "/work/script/gen-certs.sh /work/script/certs"]
+    volumes:
+      - ./:/work
+    working_dir: /work
+    restart: "no"
+
+  spring-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: browser-challenge-spring
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  envoy:
+    build:
+      context: .
+      dockerfile: script/Dockerfile.envoy
+    container_name: browser-challenge-envoy
+    depends_on:
+      certgen:
+        condition: service_completed_successfully
+      spring-app:
+        condition: service_started
+    volumes:
+      - ./script/certs:/etc/envoy/certs:ro
+    ports:
+      - "443:443"
+      - "9901:9901"
+    restart: unless-stopped

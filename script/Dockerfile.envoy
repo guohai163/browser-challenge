@@ -1,0 +1,14 @@
+FROM rust:1.78-bookworm AS wasm-build
+WORKDIR /src
+
+COPY script/h2-fp-plugin ./script/h2-fp-plugin
+RUN rustup target add wasm32-unknown-unknown
+RUN cargo build --manifest-path ./script/h2-fp-plugin/Cargo.toml --target wasm32-unknown-unknown --release
+
+FROM envoyproxy/envoy-contrib:v1.31.4
+
+COPY script/envoy.yml /etc/envoy/envoy.yml
+COPY --from=wasm-build /src/script/h2-fp-plugin/target/wasm32-unknown-unknown/release/h2_fp_plugin.wasm /etc/envoy/plugins/h2_fp.wasm
+
+EXPOSE 443 9901
+CMD ["envoy", "-c", "/etc/envoy/envoy.yml", "--log-level", "info"]
