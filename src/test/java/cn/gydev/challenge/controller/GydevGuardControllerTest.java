@@ -43,26 +43,34 @@ class GydevGuardControllerTest {
     }
 
     @Test
-    void submitGetAndPostShouldWorkWithNewFieldNames() throws Exception {
+    void submitGetAndPostShouldReturnMinimalClientPayload() throws Exception {
         Map<String, Object> challenge = controller.initChallenge();
-        String gydevToken = buildGydevToken(challenge, System.currentTimeMillis(), "nonce-x", 75);
-        String sentinel = buildSentinelToken(challenge, "nonce-x", System.currentTimeMillis());
+        String getNonce = "nonce-get";
+        String getGydevToken = buildGydevToken(challenge, System.currentTimeMillis(), getNonce, 75);
+        String getSentinel = buildSentinelToken(challenge, getNonce, System.currentTimeMillis());
 
         MockHttpServletRequest getRequest = baseRequest();
-        getRequest.addHeader("Gydev-Token", gydevToken);
-        getRequest.addHeader("Gydev-Sentinel-Proof-Token", sentinel);
-        Map<String, Object> getRes = controller.submitGet("demo", gydevToken, sentinel, getRequest);
+        getRequest.addHeader("Gydev-Token", getGydevToken);
+        getRequest.addHeader("Gydev-Sentinel-Proof-Token", getSentinel);
+        Map<String, Object> getRes = controller.submitGet("demo", getGydevToken, getSentinel, getRequest);
+
+        String postNonce = "nonce-post";
+        String postGydevToken = buildGydevToken(challenge, System.currentTimeMillis(), postNonce, 75);
+        String postSentinel = buildSentinelToken(challenge, postNonce, System.currentTimeMillis());
 
         MockHttpServletRequest postRequest = baseRequest();
-        postRequest.addHeader("Gydev-Token", gydevToken);
-        postRequest.addHeader("Gydev-Sentinel-Proof-Token", sentinel);
+        postRequest.addHeader("Gydev-Token", postGydevToken);
+        postRequest.addHeader("Gydev-Sentinel-Proof-Token", postSentinel);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("content", "demo");
-        Map<String, Object> postRes = controller.submitPost(body, gydevToken, sentinel, postRequest);
+        Map<String, Object> postRes = controller.submitPost(body, postGydevToken, postSentinel, postRequest);
 
-        assertThat(getRes.get("accepted")).isEqualTo(true);
-        assertThat(postRes.get("accepted")).isEqualTo(true);
-        assertThat(postRes.get("transport")).isEqualTo("post");
+        assertThat(getRes.get("blocked")).isIn(true, false);
+        assertThat(postRes.get("blocked")).isIn(true, false);
+        assertThat(getRes).containsKey("riskLevel");
+        assertThat(postRes).containsKey("riskLevel");
+        assertThat(getRes).doesNotContainKeys("reason", "details", "modules", "powVerified", "accepted");
+        assertThat(postRes).doesNotContainKeys("reason", "details", "modules", "powVerified", "accepted", "transport");
     }
 
     private MockHttpServletRequest baseRequest() {

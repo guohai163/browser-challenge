@@ -65,4 +65,14 @@ public class GydevEvaluationResult {
         out.put("details", details);
         return out;
     }
+
+    /**
+     * 对前端暴露的最小化结果，仅包含是否拦截与风险等级。
+     */
+    public Map<String, Object> toClientMap() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("blocked", !accepted);
+        out.put("riskLevel", riskLevel);
+        return out;
+    }
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.34 - 2026-05-07
+
+### Changed
+- Simplified `/api/gydev/submit-get` and `/api/gydev/submit-post` client response payload to minimal fields: `blocked` and `riskLevel`.
+- Moved detailed decision context (`reason`, module details, token verification internals) to server-side logs via `GydevGuardService` audit logging.
+- Updated controller tests to validate minimal payload exposure and ensure sensitive diagnostic fields are not returned to clients.
+- Updated Maven project version in `pom.xml` to `0.1.34`.
+
 ## v0.1.33 - 2026-05-07
 
 ### Fixed

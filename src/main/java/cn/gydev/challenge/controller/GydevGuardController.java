@@ -4,7 +4,6 @@ import cn.gydev.challenge.service.gydev.GydevEvaluationPayload;
 import cn.gydev.challenge.service.gydev.GydevEvaluationResult;
 import cn.gydev.challenge.service.gydev.GydevGuardService;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -57,7 +56,7 @@ public class GydevGuardController {
         payload.setGydevToken(gydevToken);
         payload.setGydevSentinelProofToken(sentinelProofToken);
         GydevEvaluationResult result = gydevGuardService.evaluate(request, payload);
-        return result.toMap();
+        return result.toClientMap();
     }
 
     /**
@@ -80,9 +79,6 @@ public class GydevGuardController {
         payload.setGydevToken(gydevToken);
         payload.setGydevSentinelProofToken(sentinelProofHeader);
         GydevEvaluationResult result = gydevGuardService.evaluate(request, payload);
-
-        Map<String, Object> out = new LinkedHashMap<>(result.toMap());
-        out.put("transport", "post");
-        return out;
+        return result.toClientMap();
     }
 }

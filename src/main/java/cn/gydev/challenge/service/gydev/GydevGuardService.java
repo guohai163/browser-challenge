@@ -2,6 +2,8 @@ package cn.gydev.challenge.service.gydev;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -9,6 +11,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class GydevGuardService {
+    private static final Logger log = LoggerFactory.getLogger(GydevGuardService.class);
 
     private final GydevGuardConfig config;
     private final TlsFingerprintGuard tlsFingerprintGuard;
@@ -90,6 +93,14 @@ public class GydevGuardService {
         out.setReason(String.valueOf(gydevResult.getOrDefault("reason", "")));
         out.setPowVerified(Boolean.TRUE.equals(gydevResult.get("powVerified")));
         out.getDetails().putAll(gydevResult);
+        log.info(
+                "gydev-eval decision: blocked={}, riskLevel={}, reason={}, powVerified={}, modules={}",
+                !out.isAccepted(),
+                out.getRiskLevel(),
+                out.getReason(),
+                out.isPowVerified(),
+                out.getModules()
+        );
         return out;
     }
 }
