@@ -105,6 +105,19 @@ class RiskChallengeServiceTest {
         assertThat(result.get("reason")).isEqualTo("pow_invalid");
     }
 
+    @Test
+    void shouldRejectWhenTlsFingerprintsAreNotVerifiedAsBrowser() throws Exception {
+        Map<String, Object> challenge = service.initChallenge();
+        MockHttpServletRequest request = programLikeRequest();
+        String riskToken = buildRiskToken(challenge, System.currentTimeMillis(), "risk-nonce-7", 80, false);
+        String proofToken = buildProofToken(challenge, "risk-nonce-7", System.currentTimeMillis(), false, false);
+
+        Map<String, Object> result = service.validateSubmission("hello", riskToken, proofToken, request);
+
+        assertThat(result.get("accepted")).isEqualTo(false);
+        assertThat(result.get("reason")).isEqualTo("TLS fingerprints are not verified as a real browser");
+    }
+
     private MockHttpServletRequest baseRequest() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("User-Agent", UA);
@@ -112,7 +125,20 @@ class RiskChallengeServiceTest {
         request.addHeader("Sec-CH-UA", SEC_CH_UA);
         request.addHeader("Sec-Fetch-Site", "same-origin");
         request.addHeader("X-JA3", "ja3-browser");
+        request.addHeader("X-JA4", "ja4-browser");
         request.addHeader("X-H2-FP", "chrome-v1");
+        return request;
+    }
+
+    private MockHttpServletRequest programLikeRequest() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("User-Agent", UA);
+        request.addHeader("Accept-Language", LANG);
+        request.addHeader("Sec-CH-UA", SEC_CH_UA);
+        request.addHeader("Sec-Fetch-Site", "same-origin");
+        request.addHeader("X-JA3", "ja3-program");
+        request.addHeader("X-JA4", "ja4-program");
+        request.addHeader("X-H2-FP", "curl-h2");
         return request;
     }
 

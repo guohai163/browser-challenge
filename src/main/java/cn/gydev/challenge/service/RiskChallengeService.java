@@ -214,12 +214,12 @@ public class RiskChallengeService {
         if (!hasRequiredTlsFingerprints(tls)) {
             return decision(false, powVerified, "high", "Missing required JA3/JA4/H2 fingerprints", ageMs);
         }
+        if (!isVerifiedBrowserClient(tls)) {
+            return decision(false, powVerified, "high", "TLS fingerprints are not verified as a real browser", ageMs);
+        }
         String tlsType = String.valueOf(tls.getOrDefault("type", "unknown"));
 
-        if ("program".equals(tlsType)) {
-            riskLevel = "high";
-            reason = "Challenge passed but TLS classifier indicates program client";
-        } else if (payload.behScore < 35) {
+        if (payload.behScore < 35) {
             riskLevel = "medium";
             reason = "Challenge passed with low behavior score";
         }
@@ -254,6 +254,20 @@ public class RiskChallengeService {
         String h2 = h2Obj == null ? "" : String.valueOf(h2Obj).trim();
 
         return isValidFingerprintValue(ja3) && isValidFingerprintValue(ja4) && isValidFingerprintValue(h2);
+    }
+
+    /**
+     * 真实浏览器判定：
+     * 1) 分类结果必须为 browser
+     * 2) 置信度必须为 high（要求 H2 与 JA3/JA4 信号共同支撑）
+     */
+    private boolean isVerifiedBrowserClient(Map<String, Object> tlsClassifierResult) {
+        if (tlsClassifierResult == null) {
+            return false;
+        }
+        String type = String.valueOf(tlsClassifierResult.getOrDefault("type", "unknown"));
+        String confidence = String.valueOf(tlsClassifierResult.getOrDefault("confidence", "low"));
+        return "browser".equals(type) && "high".equals(confidence);
     }
 
     /**
