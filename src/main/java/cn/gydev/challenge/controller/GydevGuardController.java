@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Unified gydev guard demo endpoints for GET and POST submission.
+ * Gydev 防护演示接口，统一处理 GET/POST 提交流程。
  */
 @RestController
 @RequestMapping("/api/gydev")
@@ -27,11 +27,25 @@ public class GydevGuardController {
         this.gydevGuardService = gydevGuardService;
     }
 
+    /**
+     * 初始化挑战参数，供前端生成 token。
+     *
+     * @return 挑战参数
+     */
     @GetMapping("/challenge/init")
     public Map<String, Object> initChallenge() {
         return gydevGuardService.initChallenge();
     }
 
+    /**
+     * 受 Gydev 防护模块保护的 GET 提交接口。
+     *
+     * @param content 业务内容
+     * @param gydevToken Header 中的 Gydev-Token
+     * @param sentinelProofToken Header 中的 Gydev-Sentinel-Proof-Token
+     * @param request 当前请求
+     * @return 统一评估结果
+     */
     @GetMapping("/submit-get")
     public Map<String, Object> submitGet(
             @RequestParam("content") String content,
@@ -46,6 +60,15 @@ public class GydevGuardController {
         return result.toMap();
     }
 
+    /**
+     * 受 Gydev 防护模块保护的 POST 提交接口。
+     *
+     * @param body 请求体
+     * @param gydevToken Header 中的 Gydev-Token
+     * @param sentinelProofHeader Header 中的 Gydev-Sentinel-Proof-Token
+     * @param request 当前请求
+     * @return 带传输方式标记的统一评估结果
+     */
     @PostMapping("/submit-post")
     public Map<String, Object> submitPost(
             @RequestBody Map<String, Object> body,

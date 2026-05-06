@@ -4,7 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Standardized evaluation result from gydev guard service.
+ * Gydev 防护服务的标准化评估结果。
  */
 public class GydevEvaluationResult {
 
@@ -66,4 +66,3 @@ public class GydevEvaluationResult {
         return out;
     }
 }
-

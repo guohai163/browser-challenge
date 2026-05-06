@@ -7,7 +7,7 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * Guard module for TLS/H2 fingerprint evaluation.
+ * TLS/H2 指纹评估模块。
  */
 @Component
 public class TlsFingerprintGuard {
@@ -18,6 +18,14 @@ public class TlsFingerprintGuard {
         this.tlsClassifierService = tlsClassifierService;
     }
 
+    /**
+     * 执行 TLS/H2 指纹评估，并按开关对结果做特征屏蔽。
+     *
+     * @param request 当前请求
+     * @param enableTls 是否启用 TLS 指纹信号
+     * @param enableH2 是否启用 H2 指纹信号
+     * @return 模块评估结果
+     */
     public Map<String, Object> evaluate(HttpServletRequest request, boolean enableTls, boolean enableH2) {
         Map<String, Object> out = new LinkedHashMap<>();
         if (!enableTls && !enableH2) {
@@ -40,4 +48,3 @@ public class TlsFingerprintGuard {
         return out;
     }
 }
-

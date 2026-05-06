@@ -8,10 +8,10 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
- * Classifies caller type from request-visible hints and optional TLS fingerprint headers.
+ * 基于请求可见信号与可选 TLS 指纹头对调用方类型进行分类。
  * <p>
- * Note: a Spring Boot app behind TLS termination cannot directly read ClientHello fields.
- * For strong TLS-based detection, forward JA3/JA4-style fingerprints from gateway/proxy.
+ * 注意：Spring Boot 在 TLS 终止之后无法直接读取 ClientHello 字段，
+ * 若需更强 TLS 判别能力，应由网关/代理透传 JA3/JA4 等指纹。
  */
 @Service
 public class TlsClassifierService {
@@ -24,10 +24,10 @@ public class TlsClassifierService {
     private static final String TYPE_UNKNOWN = "unknown";
 
     /**
-     * Classify a request as browser-like or programmatic.
+     * 将请求分类为浏览器请求或程序化请求。
      *
-     * @param request current HTTP request
-     * @return classification details
+     * @param request 当前 HTTP 请求
+     * @return 分类详情
      */
     public Map<String, Object> classify(HttpServletRequest request) {
         String userAgent = header(request, "User-Agent");
@@ -35,7 +35,7 @@ public class TlsClassifierService {
         String secFetchSite = header(request, "Sec-Fetch-Site");
         String acceptLanguage = header(request, "Accept-Language");
 
-        // Optional fingerprint headers usually injected by reverse proxy/WAF.
+        // 可选指纹头，通常由反向代理/WAF 注入。
         String ja3 = firstNonBlank(
                 header(request, "X-JA3"),
                 header(request, "JA3"),
@@ -96,7 +96,7 @@ public class TlsClassifierService {
         }
 
         if (hasH2Signal && !hasTlsSignal && "high".equals(confidence)) {
-            // Plan rule: with H2 but without JA3/JA4, cap confidence.
+            // 仅有 H2 而缺少 JA3/JA4 时，置信度上限降为 medium。
             confidence = "medium";
         }
 

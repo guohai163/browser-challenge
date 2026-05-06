@@ -5,11 +5,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Spring bean configuration for Gydev guard toggles.
+ * Gydev 防护开关的 Spring Bean 配置。
  */
 @Configuration
 public class GydevGuardConfiguration {
 
+    /**
+     * 创建 Gydev 防护模块的默认运行时开关配置。
+     *
+     * @return Gydev 防护配置 Bean
+     */
     @Bean
     public GydevGuardConfig gydevGuardConfig() {
         GydevGuardConfig config = new GydevGuardConfig();
@@ -20,4 +25,3 @@ public class GydevGuardConfiguration {
         return config;
     }
 }
-

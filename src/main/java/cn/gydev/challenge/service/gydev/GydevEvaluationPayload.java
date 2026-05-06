@@ -1,7 +1,7 @@
 package cn.gydev.challenge.service.gydev;
 
 /**
- * Input payload for gydev guard evaluation.
+ * Gydev 防护评估输入载荷。
  */
 public class GydevEvaluationPayload {
 
@@ -33,4 +33,3 @@ public class GydevEvaluationPayload {
         this.gydevSentinelProofToken = gydevSentinelProofToken;
     }
 }
-

@@ -9,9 +9,7 @@ services:
     restart: "no"
 
   spring-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/guohai/browser-challenge:latest
     container_name: browser-challenge-spring
     expose:
       - "8080"
@@ -20,9 +18,7 @@ services:
     restart: unless-stopped
 
   envoy:
-    build:
-      context: .
-      dockerfile: script/Dockerfile.envoy
+    image: ghcr.io/guohai/browser-challenge-envoy:latest
     container_name: browser-challenge-envoy
     depends_on:
       certgen:

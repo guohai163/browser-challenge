@@ -5,7 +5,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
- * Unified orchestrator for gydev anti-bot capabilities with runtime toggles.
+ * Gydev 防护能力统一编排服务，支持按开关启停模块。
  */
 @Service
 public class GydevGuardService {
@@ -26,17 +26,32 @@ public class GydevGuardService {
         this.sentinelProofGuard = sentinelProofGuard;
     }
 
+    /**
+     * 初始化挑战数据，并返回当前启用的防护开关快照。
+     *
+     * @return 含防护开关信息的挑战载荷
+     */
     public Map<String, Object> initChallenge() {
+        // 先从核心挑战服务生成基础挑战数据（challengeId、salt、pow 参数等）。
         Map<String, Object> challenge = gydevTokenGuard.initChallenge();
+        // 将当前后端防护开关快照附加到返回值，便于前端按能力动态处理流程。
         challenge.put("guardConfig", Map.of(
                 "enableTlsFingerprint", config.isEnableTlsFingerprint(),
                 "enableH2Fingerprint", config.isEnableH2Fingerprint(),
                 "enableGydevToken", config.isEnableGydevToken(),
                 "enableSentinelProofToken", config.isEnableSentinelProofToken()
         ));
+        // 返回带 guardConfig 的挑战载荷。
         return challenge;
     }
 
+    /**
+     * 执行所有已启用模块并聚合为统一判定结果。
+     *
+     * @param request 当前请求
+     * @param payload 提交载荷
+     * @return 统一评估结果
+     */
     public GydevEvaluationResult evaluate(HttpServletRequest request, GydevEvaluationPayload payload) {
         GydevEvaluationResult out = new GydevEvaluationResult();
 
@@ -62,6 +77,7 @@ public class GydevGuardService {
         @SuppressWarnings("unchecked")
         Map<String, Object> gydevResult = (Map<String, Object>) gydevToken.get("result");
         if (gydevResult == null) {
+            // Token 模块关闭时，采用放行策略并标注跳过原因。
             out.setAccepted(true);
             out.setRiskLevel("low");
             out.setReason("gydev_token_skipped");

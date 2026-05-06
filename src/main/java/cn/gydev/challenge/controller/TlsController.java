@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Endpoint for classifying caller type by TLS-related/request-level signals.
+ * 基于 TLS 相关信号与请求头特征对调用方类型进行判别的接口。
  */
 @RestController
 @RequestMapping("/api")
@@ -21,10 +21,10 @@ public class TlsController {
     }
 
     /**
-     * Classifies incoming requests as browser/program/unknown.
+     * 将请求分类为 browser / program / unknown。
      *
-     * @param request incoming request
-     * @return classification payload
+     * @param request 当前请求
+     * @return 分类结果
      */
     @GetMapping("/tls")
     public Map<String, Object> tls(HttpServletRequest request) {

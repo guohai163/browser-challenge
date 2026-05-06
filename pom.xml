@@ -13,7 +13,7 @@
 
     <groupId>com.example</groupId>
     <artifactId>springboot4-jdk21-demo</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.12</version>
     <name>springboot4-jdk21-demo</name>
     <description>Spring Boot 4 and JDK 21 starter project</description>
 

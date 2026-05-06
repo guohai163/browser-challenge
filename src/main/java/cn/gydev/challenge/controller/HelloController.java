@@ -5,15 +5,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Minimal HTTP endpoint used to verify the application boots correctly.
+ * 用于验证应用是否正常启动的最小示例接口。
  */
 @RestController
 public class HelloController {
 
     /**
-     * Returns a simple health-style response.
+     * 返回简单的健康检查风格响应。
      *
-     * @return a small JSON payload
+     * @return 简单 JSON 结果
      */
     @GetMapping("/hello")
     public Map<String, String> hello() {
