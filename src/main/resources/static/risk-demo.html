@@ -34,7 +34,7 @@
 <body>
 <div class="card">
     <h2>Gydev 防护 DEMO（SDK 封装版）</h2>
-    <p>流程：challenge/init → gydev_token → Gydev-Sentinel-Proof-Token → GET/POST 提交。</p>
+    <p>流程：challenge/init → Gydev-Token → Gydev-Sentinel-Proof-Token → GET/POST 提交。</p>
 
     <label>提交方式</label>
     <select id="method">
@@ -45,7 +45,7 @@
     <label>内容 content</label>
     <textarea id="content" placeholder="输入要提交的数据"></textarea>
 
-    <label>gydev_token</label>
+    <label>Gydev-Token</label>
     <input id="gydevToken" readonly placeholder="点击生成 Token">
 
     <label>Gydev-Sentinel-Proof-Token</label>
@@ -122,7 +122,7 @@
         const gydevToken = gydevTokenEl.value.trim();
         const sentinel = sentinelTokenEl.value.trim();
         if (!content) throw new Error("content 不能为空");
-        if (!gydevToken) throw new Error("请先生成 gydev_token");
+        if (!gydevToken) throw new Error("请先生成 Gydev-Token");
         if (!sentinel) throw new Error("请先生成 Gydev-Sentinel-Proof-Token");
 
         const method = methodEl.value;

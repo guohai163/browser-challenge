@@ -46,7 +46,7 @@ docker run --rm -p 8080:8080 ghcr.io/<owner>/<repo>:v1.0.0
 
 1. TLS 指纹识别
 2. H2 指纹识别
-3. `gydev_token`（类 arkose token）
+3. `Gydev-Token`（类 arkose token）
 4. `Gydev-Sentinel-Proof-Token`（类 Sentinel PoW token）
 
 关闭某能力后，系统采用“跳过校验”策略：不阻断请求，并在结果里标记 `enabled=false`、`skipped=true`。
@@ -81,13 +81,13 @@ config.setEnableSentinelProofToken(true);
   - Query 参数：
     - `content`
   - Header 参数（仅新命名）：
-    - `gydev_token`
+    - `Gydev-Token`
     - `Gydev-Sentinel-Proof-Token`
 - `POST /api/gydev/submit-post`
   - Body（JSON）字段：
     - `content`
   - Header 参数（仅新命名）：
-    - `gydev_token`
+    - `Gydev-Token`
     - `Gydev-Sentinel-Proof-Token`
 
 > 注意：旧字段 `riskToken/proofToken` 已不兼容。
@@ -135,14 +135,14 @@ sdk.init({
 流程：
 
 1. 点击“生成 Token”
-2. 自动生成 `gydev_token`
+2. 自动生成 `Gydev-Token`
 3. 自动计算 `Gydev-Sentinel-Proof-Token`（Web Worker）
 4. 选择 GET/POST 并提交
 
 ## 6. 请求字段规范（统一新命名）
 
 - `content`
-- `gydev_token`
+- `Gydev-Token`
 - `Gydev-Sentinel-Proof-Token`
 
 ## 7. PoW 规则（演示默认）
@@ -180,7 +180,7 @@ proxy_set_header X-H2-PRIORITY $http_x_h2_priority;
 
 ## 10. 生产建议
 
-1. `gydev_token` 与 `Gydev-Sentinel-Proof-Token` 建议统一走 Header（本项目已默认如此），避免 URL 暴露与超长问题。
+1. `Gydev-Token` 与 `Gydev-Sentinel-Proof-Token` 建议统一走 Header（本项目已默认如此），避免 URL 暴露与超长问题。
 2. 防重放从内存迁移到 Redis（分布式部署必做）。
 3. 根据风险分动态调整 PoW 难度。
 4. 为 Gydev 开关增加配置中心热更新能力（灰度发布）。

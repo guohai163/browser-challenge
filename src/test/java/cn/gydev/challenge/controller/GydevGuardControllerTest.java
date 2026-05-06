@@ -49,12 +49,12 @@ class GydevGuardControllerTest {
         String sentinel = buildSentinelToken(challenge, "nonce-x", System.currentTimeMillis());
 
         MockHttpServletRequest getRequest = baseRequest();
-        getRequest.addHeader("gydev_token", gydevToken);
+        getRequest.addHeader("Gydev-Token", gydevToken);
         getRequest.addHeader("Gydev-Sentinel-Proof-Token", sentinel);
         Map<String, Object> getRes = controller.submitGet("demo", gydevToken, sentinel, getRequest);
 
         MockHttpServletRequest postRequest = baseRequest();
-        postRequest.addHeader("gydev_token", gydevToken);
+        postRequest.addHeader("Gydev-Token", gydevToken);
         postRequest.addHeader("Gydev-Sentinel-Proof-Token", sentinel);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("content", "demo");

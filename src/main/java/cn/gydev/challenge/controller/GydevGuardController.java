@@ -35,7 +35,7 @@ public class GydevGuardController {
     @GetMapping("/submit-get")
     public Map<String, Object> submitGet(
             @RequestParam("content") String content,
-            @RequestHeader("gydev_token") String gydevToken,
+            @RequestHeader("Gydev-Token") String gydevToken,
             @RequestHeader("Gydev-Sentinel-Proof-Token") String sentinelProofToken,
             HttpServletRequest request) {
         GydevEvaluationPayload payload = new GydevEvaluationPayload();
@@ -49,7 +49,7 @@ public class GydevGuardController {
     @PostMapping("/submit-post")
     public Map<String, Object> submitPost(
             @RequestBody Map<String, Object> body,
-            @RequestHeader("gydev_token") String gydevToken,
+            @RequestHeader("Gydev-Token") String gydevToken,
             @RequestHeader("Gydev-Sentinel-Proof-Token") String sentinelProofHeader,
             HttpServletRequest request) {
         GydevEvaluationPayload payload = new GydevEvaluationPayload();

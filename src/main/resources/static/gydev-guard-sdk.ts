@@ -23,7 +23,7 @@ type GydevConfig = {
 
 type SubmitPayload = {
   content: string;
-  gydev_token: string;
+  Gydev-Token: string;
   "Gydev-Sentinel-Proof-Token": string;
 };
 
@@ -147,7 +147,7 @@ export class GydevGuardSdk {
     url.searchParams.set("content", content);
     const res = await fetch(url.toString(), {
       headers: {
-        gydev_token: gydevToken,
+        Gydev-Token: gydevToken,
         "Gydev-Sentinel-Proof-Token": sentinelToken,
       },
     });
@@ -162,7 +162,7 @@ export class GydevGuardSdk {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        gydev_token: gydevToken,
+        Gydev-Token: gydevToken,
         "Gydev-Sentinel-Proof-Token": sentinelToken,
       },
       body: JSON.stringify(payload),
