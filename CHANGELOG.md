@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.23 - 2026-05-06
+
+### Changed
+- Release-only version bump to `v0.1.23`.
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+
 ## v0.1.22 - 2026-05-06
 
 ### Added
