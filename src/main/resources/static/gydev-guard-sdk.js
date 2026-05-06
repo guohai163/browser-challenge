@@ -105,7 +105,7 @@ class GydevGuardSdk {
     url.searchParams.set("content", content);
     const res = await fetch(url.toString(), {
       headers: {
-        Gydev-Token: gydevToken,
+        "Gydev-Token": gydevToken,
         "Gydev-Sentinel-Proof-Token": sentinelToken,
       },
     });
@@ -120,7 +120,7 @@ class GydevGuardSdk {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Gydev-Token: gydevToken,
+        "Gydev-Token": gydevToken,
         "Gydev-Sentinel-Proof-Token": sentinelToken,
       },
       body: JSON.stringify(payload),
