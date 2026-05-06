@@ -60,6 +60,22 @@ static_resources:
                 codec_type: AUTO
                 use_remote_address: true
                 xff_num_trusted_hops: 0
+                access_log:
+                  - name: envoy.access_loggers.stdout
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+                      log_format:
+                        json_format:
+                          method: "%REQ(:METHOD)%"
+                          path: "%REQ(:PATH)%"
+                          protocol: "%PROTOCOL%"
+                          upstream_cluster: "%UPSTREAM_CLUSTER%"
+                          ja3: "%REQ(X-JA3)%"
+                          ja4: "%REQ(X-JA4)%"
+                          h2_fp: "%REQ(X-H2-FP)%"
+                          h2_settings: "%REQ(X-H2-SETTINGS)%"
+                          h2_window: "%REQ(X-H2-WINDOW)%"
+                          h2_priority: "%REQ(X-H2-PRIORITY)%"
 
                 route_config:
                   name: local_route
@@ -83,19 +99,19 @@ static_resources:
 
                         - header:
                             key: X-H2-FP
-                            value: "%DYNAMIC_METADATA(gydev.h2:fp)%"
+                            value: "%DYNAMIC_METADATA([\"gydev.h2\",\"fp\"])%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                         - header:
                             key: X-H2-SETTINGS
-                            value: "%DYNAMIC_METADATA(gydev.h2:settings)%"
+                            value: "%DYNAMIC_METADATA([\"gydev.h2\",\"settings\"])%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                         - header:
                             key: X-H2-WINDOW
-                            value: "%DYNAMIC_METADATA(gydev.h2:window)%"
+                            value: "%DYNAMIC_METADATA([\"gydev.h2\",\"window\"])%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                         - header:
                             key: X-H2-PRIORITY
-                            value: "%DYNAMIC_METADATA(gydev.h2:priority)%"
+                            value: "%DYNAMIC_METADATA([\"gydev.h2\",\"priority\"])%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
 
                 http_filters:

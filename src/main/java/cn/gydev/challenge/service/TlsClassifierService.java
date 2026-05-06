@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class TlsClassifierService {
+    private static final Logger log = LoggerFactory.getLogger(TlsClassifierService.class);
     private static final int H2_WEIGHT = 50;
     private static final int TLS_WEIGHT = 35;
     private static final int HEADER_WEIGHT = 15;
@@ -123,7 +126,40 @@ public class TlsClassifierService {
                 "acceptLanguage", acceptLanguage,
                 "h2Details", h2Details
         ));
+
+        // 排障日志：用于定位 H2 指纹注入链路（Envoy -> upstream header -> 应用）。
+        log.info(
+                "tls-classifier recv: type={}, confidence={}, ja3={}, ja4={}, h2Fp={}, h2Settings={}, h2Window={}, h2Priority={}",
+                type,
+                confidence,
+                redact(ja3),
+                redact(ja4),
+                redact(h2Fp),
+                shortVal(h2Settings),
+                shortVal(h2Window),
+                shortVal(h2Priority)
+        );
         return result;
+    }
+
+    private String redact(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        if (value.length() <= 12) {
+            return value;
+        }
+        return value.substring(0, 8) + "..." + value.substring(value.length() - 4);
+    }
+
+    private String shortVal(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        if (value.length() <= 120) {
+            return value;
+        }
+        return value.substring(0, 117) + "...";
     }
 
     private boolean looksLikeBrowserByHeaders(String userAgent, String secChUa, String secFetchSite, String acceptLanguage) {

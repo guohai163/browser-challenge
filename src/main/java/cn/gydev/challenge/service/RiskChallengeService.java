@@ -15,6 +15,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.boot.json.JsonParser;
@@ -26,6 +28,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class RiskChallengeService {
+    private static final Logger log = LoggerFactory.getLogger(RiskChallengeService.class);
 
     private static final long CHALLENGE_TTL_MS = 120_000L;
     private static final long TOKEN_MAX_AGE_MS = 120_000L;
@@ -211,6 +214,7 @@ public class RiskChallengeService {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> tls = (Map<String, Object>) tlsClassifierService.classify(request);
+        log.info("risk-submit tls-summary: {}", summarizeTls(tls));
         if (!hasRequiredTlsFingerprints(tls)) {
             return decision(false, powVerified, "high", "Missing required JA3/JA4/H2 fingerprints", ageMs);
         }
@@ -281,6 +285,25 @@ public class RiskChallengeService {
         }
         String lower = value.trim().toLowerCase(Locale.ROOT);
         return !("unknown".equals(lower) || "n/a".equals(lower) || "null".equals(lower) || "-".equals(lower));
+    }
+
+    @SuppressWarnings("unchecked")
+    private String summarizeTls(Map<String, Object> tlsClassifierResult) {
+        if (tlsClassifierResult == null) {
+            return "tls=null";
+        }
+        Object fpsObj = tlsClassifierResult.get("fingerprints");
+        if (!(fpsObj instanceof Map<?, ?> fps)) {
+            return "fingerprints=missing";
+        }
+        String ja3 = String.valueOf(fps.getOrDefault("ja3", "")).trim();
+        String ja4 = String.valueOf(fps.getOrDefault("ja4", "")).trim();
+        String h2 = String.valueOf(fps.getOrDefault("h2", "")).trim();
+        return "type=" + tlsClassifierResult.getOrDefault("type", "unknown")
+                + ",confidence=" + tlsClassifierResult.getOrDefault("confidence", "low")
+                + ",ja3=" + (ja3.isBlank() ? "missing" : "ok")
+                + ",ja4=" + (ja4.isBlank() ? "missing" : "ok")
+                + ",h2=" + (h2.isBlank() ? "missing" : "ok");
     }
 
     /**

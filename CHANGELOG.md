@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.1.22 - 2026-05-06
+
+### Added
+- Added Envoy HCM JSON access logs for fingerprint diagnostics, including `ja3`, `ja4`, `h2_fp`, `h2_settings`, `h2_window`, and `h2_priority`.
+- Added backend TLS classification diagnostic logs in `TlsClassifierService` for quick verification of received `X-H2-*` headers.
+- Added risk submission TLS summary logs in `RiskChallengeService` to clearly show missing/available JA3/JA4/H2 signals.
+
+### Fixed
+- Updated Envoy dynamic metadata formatter usage to path-array form (e.g. `%DYNAMIC_METADATA([\"gydev.h2\",\"fp\"])%`) for newer Envoy versions.
+
+### Changed
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+
 ## v0.1.21 - 2026-05-06
 
 ### Fixed
