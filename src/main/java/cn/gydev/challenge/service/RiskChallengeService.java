@@ -246,9 +246,12 @@ public class RiskChallengeService {
             return false;
         }
 
-        String ja3 = String.valueOf(fingerprints.getOrDefault("ja3", "")).trim();
-        String ja4 = String.valueOf(fingerprints.getOrDefault("ja4", "")).trim();
-        String h2 = String.valueOf(fingerprints.getOrDefault("h2", "")).trim();
+        Object ja3Obj = fingerprints.get("ja3");
+        Object ja4Obj = fingerprints.get("ja4");
+        Object h2Obj = fingerprints.get("h2");
+        String ja3 = ja3Obj == null ? "" : String.valueOf(ja3Obj).trim();
+        String ja4 = ja4Obj == null ? "" : String.valueOf(ja4Obj).trim();
+        String h2 = h2Obj == null ? "" : String.valueOf(h2Obj).trim();
 
         return isValidFingerprintValue(ja3) && isValidFingerprintValue(ja4) && isValidFingerprintValue(h2);
     }
