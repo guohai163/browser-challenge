@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.32 - 2026-05-07
+
+### Fixed
+- Expanded browser H2 fingerprint classification in `TlsClassifierService` to recognize Safari-like H2 settings/window pattern (`enable_push=0;max_concurrent_streams=100;initial_window_size=2097152;unknown=1` with window `10420225`).
+- Added Safari regression coverage in `TlsClassifierServiceTest` to ensure Safari browser traffic is classified as `browser/high`.
+
+### Changed
+- Updated Maven project version in `pom.xml` to `0.1.32`.
+
 ## v0.1.31 - 2026-05-06
 
 ### Fixed

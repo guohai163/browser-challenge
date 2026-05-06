@@ -106,4 +106,24 @@ class TlsClassifierServiceTest {
         assertThat(result.get("type")).isEqualTo("browser");
         assertThat(result.get("confidence")).isEqualTo("high");
     }
+
+    @Test
+    void shouldClassifySafariAsBrowserWhenH2SettingsMatchSafariPattern() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15");
+        request.addHeader("Sec-CH-UA", "\"Not:A-Brand\";v=\"99\", \"Safari\";v=\"18\"");
+        request.addHeader("Sec-Fetch-Site", "same-origin");
+        request.addHeader("Accept-Language", "zh-CN,zh-Hans;q=0.9");
+        request.addHeader("X-H2-FP", "40873289afe3a13e813c7905c2ee9e746d7e60f3d4d7dd9dab161e912193e316");
+        request.addHeader("X-H2-SETTINGS", "enable_push=0;max_concurrent_streams=100;initial_window_size=2097152;unknown=1");
+        request.addHeader("X-H2-WINDOW", "10420225");
+        request.addHeader("X-H2-PRIORITY", "");
+        request.addHeader("X-JA3", "bae146cc2528b49cbcd78c00475566a7");
+        request.addHeader("X-JA4", "t13d2014h2_a09f3c656075_e42f34c56612");
+
+        Map<String, Object> result = service.classify(request);
+
+        assertThat(result.get("type")).isEqualTo("browser");
+        assertThat(result.get("confidence")).isEqualTo("high");
+    }
 }

@@ -208,12 +208,21 @@ public class TlsClassifierService {
         // Envoy/Nginx 透传的真实浏览器 H2 参数通常不带浏览器名称，补充结构化特征匹配。
         String settings = h2Settings == null ? "" : h2Settings.toLowerCase(Locale.ROOT);
         String window = h2Window == null ? "" : h2Window.trim();
-        boolean hasBrowserSettings = settings.contains("header_table_size=65536")
+        boolean hasChromeLikeSettings = settings.contains("header_table_size=65536")
                 && settings.contains("enable_push=0")
                 && settings.contains("initial_window_size=6291456")
                 && settings.contains("max_header_list_size=262144");
-        boolean hasBrowserWindow = "15663105".equals(window);
-        return hasBrowserSettings && hasBrowserWindow;
+        boolean hasChromeLikeWindow = "15663105".equals(window);
+
+        // Safari 常见 H2 指纹：settings 中包含 unknown=1，且窗口值稳定在 10420225。
+        boolean hasSafariLikeSettings = settings.contains("enable_push=0")
+                && settings.contains("max_concurrent_streams=100")
+                && settings.contains("initial_window_size=2097152")
+                && settings.contains("unknown=1");
+        boolean hasSafariLikeWindow = "10420225".equals(window);
+
+        return (hasChromeLikeSettings && hasChromeLikeWindow)
+                || (hasSafariLikeSettings && hasSafariLikeWindow);
     }
 
     private boolean looksLikeProgramH2(String h2Fp, String h2Settings, String h2Window, String h2Priority) {
