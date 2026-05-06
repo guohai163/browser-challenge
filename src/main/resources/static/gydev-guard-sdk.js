@@ -103,22 +103,24 @@ class GydevGuardSdk {
   async submitGet(content, gydevToken, sentinelToken) {
     const url = new URL(this.withBase(this.config.endpoints.submitGet), window.location.origin);
     url.searchParams.set("content", content);
-    url.searchParams.set("gydev_token", gydevToken);
-    url.searchParams.set("Gydev-Sentinel-Proof-Token", sentinelToken);
-    const res = await fetch(url.toString());
+    const res = await fetch(url.toString(), {
+      headers: {
+        gydev_token: gydevToken,
+        "Gydev-Sentinel-Proof-Token": sentinelToken,
+      },
+    });
     return await res.json();
   }
 
   async submitPost(content, gydevToken, sentinelToken) {
     const payload = {
       content,
-      gydev_token: gydevToken,
-      "Gydev-Sentinel-Proof-Token": sentinelToken,
     };
     const res = await fetch(this.withBase(this.config.endpoints.submitPost), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        gydev_token: gydevToken,
         "Gydev-Sentinel-Proof-Token": sentinelToken,
       },
       body: JSON.stringify(payload),
@@ -199,4 +201,3 @@ class GydevGuardSdk {
 }
 
 window.GydevGuardSdk = GydevGuardSdk;
-

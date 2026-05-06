@@ -78,16 +78,17 @@ config.setEnableSentinelProofToken(true);
 - `GET /api/gydev/challenge/init`
   - 返回：`challengeId`、`expiresAt`、`salt`、`publicParams`、`pow`、`guardConfig`
 - `GET /api/gydev/submit-get`
-  - Query 参数（仅新命名）：
+  - Query 参数：
     - `content`
+  - Header 参数（仅新命名）：
     - `gydev_token`
     - `Gydev-Sentinel-Proof-Token`
 - `POST /api/gydev/submit-post`
   - Body（JSON）字段：
     - `content`
+  - Header 参数（仅新命名）：
     - `gydev_token`
     - `Gydev-Sentinel-Proof-Token`
-  - 同时支持通过 Header 传 `Gydev-Sentinel-Proof-Token`
 
 > 注意：旧字段 `riskToken/proofToken` 已不兼容。
 
@@ -179,7 +180,7 @@ proxy_set_header X-H2-PRIORITY $http_x_h2_priority;
 
 ## 10. 生产建议
 
-1. 建议将 `Gydev-Sentinel-Proof-Token` 走 Header 或 POST Body，避免 URL 暴露。
+1. `gydev_token` 与 `Gydev-Sentinel-Proof-Token` 建议统一走 Header（本项目已默认如此），避免 URL 暴露与超长问题。
 2. 防重放从内存迁移到 Redis（分布式部署必做）。
 3. 根据风险分动态调整 PoW 难度。
 4. 为 Gydev 开关增加配置中心热更新能力（灰度发布）。

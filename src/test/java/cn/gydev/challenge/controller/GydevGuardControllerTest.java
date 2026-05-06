@@ -45,17 +45,20 @@ class GydevGuardControllerTest {
     @Test
     void submitGetAndPostShouldWorkWithNewFieldNames() throws Exception {
         Map<String, Object> challenge = controller.initChallenge();
-        MockHttpServletRequest request = baseRequest();
         String gydevToken = buildGydevToken(challenge, System.currentTimeMillis(), "nonce-x", 75);
         String sentinel = buildSentinelToken(challenge, "nonce-x", System.currentTimeMillis());
 
-        Map<String, Object> getRes = controller.submitGet("demo", gydevToken, sentinel, request);
+        MockHttpServletRequest getRequest = baseRequest();
+        getRequest.addHeader("gydev_token", gydevToken);
+        getRequest.addHeader("Gydev-Sentinel-Proof-Token", sentinel);
+        Map<String, Object> getRes = controller.submitGet("demo", gydevToken, sentinel, getRequest);
 
+        MockHttpServletRequest postRequest = baseRequest();
+        postRequest.addHeader("gydev_token", gydevToken);
+        postRequest.addHeader("Gydev-Sentinel-Proof-Token", sentinel);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("content", "demo");
-        body.put("gydev_token", gydevToken);
-        body.put("Gydev-Sentinel-Proof-Token", sentinel);
-        Map<String, Object> postRes = controller.submitPost(body, "", request);
+        Map<String, Object> postRes = controller.submitPost(body, gydevToken, sentinel, postRequest);
 
         assertThat(getRes.get("accepted")).isEqualTo(true);
         assertThat(postRes.get("accepted")).isEqualTo(true);
@@ -136,4 +139,3 @@ class GydevGuardControllerTest {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes(StandardCharsets.UTF_8));
     }
 }
-

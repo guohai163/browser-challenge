@@ -35,8 +35,8 @@ public class GydevGuardController {
     @GetMapping("/submit-get")
     public Map<String, Object> submitGet(
             @RequestParam("content") String content,
-            @RequestParam("gydev_token") String gydevToken,
-            @RequestParam("Gydev-Sentinel-Proof-Token") String sentinelProofToken,
+            @RequestHeader("gydev_token") String gydevToken,
+            @RequestHeader("Gydev-Sentinel-Proof-Token") String sentinelProofToken,
             HttpServletRequest request) {
         GydevEvaluationPayload payload = new GydevEvaluationPayload();
         payload.setContent(content);
@@ -49,15 +49,13 @@ public class GydevGuardController {
     @PostMapping("/submit-post")
     public Map<String, Object> submitPost(
             @RequestBody Map<String, Object> body,
-            @RequestHeader(value = "Gydev-Sentinel-Proof-Token", required = false) String sentinelProofHeader,
+            @RequestHeader("gydev_token") String gydevToken,
+            @RequestHeader("Gydev-Sentinel-Proof-Token") String sentinelProofHeader,
             HttpServletRequest request) {
         GydevEvaluationPayload payload = new GydevEvaluationPayload();
         payload.setContent(String.valueOf(body.getOrDefault("content", "")));
-        payload.setGydevToken(String.valueOf(body.getOrDefault("gydev_token", "")));
-
-        String sentinelProofBody = String.valueOf(body.getOrDefault("Gydev-Sentinel-Proof-Token", ""));
-        payload.setGydevSentinelProofToken(sentinelProofHeader != null && !sentinelProofHeader.isBlank()
-                ? sentinelProofHeader : sentinelProofBody);
+        payload.setGydevToken(gydevToken);
+        payload.setGydevSentinelProofToken(sentinelProofHeader);
         GydevEvaluationResult result = gydevGuardService.evaluate(request, payload);
 
         Map<String, Object> out = new LinkedHashMap<>(result.toMap());
@@ -65,4 +63,3 @@ public class GydevGuardController {
         return out;
     }
 }
-
