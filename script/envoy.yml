@@ -33,9 +33,9 @@ static_resources:
                 alpn_protocols: ["h2", "http/1.1"]
                 tls_certificates:
                   - certificate_chain:
-                      filename: /etc/envoy/certs/fullchain1.pem
+                      filename: /etc/envoy/certs/fullchain.pem
                     private_key:
-                      filename: /etc/envoy/certs/privkey1.pem
+                      filename: /etc/envoy/certs/privkey.pem
 
           filters:
             # Extract real downstream H2 fingerprint fields into dynamic metadata:
