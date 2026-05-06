@@ -133,7 +133,17 @@ impl H2FrameExtractor {
             return end_of_stream;
         }
 
-        if self.settings.is_some() && self.window.is_some() && self.priority.is_some() {
+        // HTTP/2 client preface usually provides SETTINGS first; WINDOW_UPDATE is common,
+        // while PRIORITY may be absent on modern browser flows.
+        // To make metadata available before request-header formatting in Envoy,
+        // finalize as soon as SETTINGS + WINDOW_UPDATE are both observed.
+        if self.settings.is_some() && self.window.is_some() {
+            return true;
+        }
+
+        // Fallback: some clients may delay WINDOW_UPDATE beyond header processing.
+        // In that case we still emit a stable hash using available SETTINGS.
+        if self.settings.is_some() && self.frame_count >= 1 {
             return true;
         }
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.21 - 2026-05-06
+
+### Fixed
+- Kept strict TLS policy requiring JA3/JA4/H2 fingerprints and restored reject reason to `Missing required JA3/JA4/H2 fingerprints`.
+- Updated H2 Wasm extractor finalize timing in `script/h2-fp-plugin/src/lib.rs` to emit fingerprint metadata earlier (no longer waits for PRIORITY frame), improving `X-H2-*` availability in request processing.
+
+### Changed
+- Updated h2-fp-plugin documentation to describe early metadata emission behavior.
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+
 ## v0.1.20 - 2026-05-06
 
 ### Fixed

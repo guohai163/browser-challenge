@@ -11,6 +11,11 @@ The plugin writes dynamic metadata under namespace `gydev.h2`:
 - `window`: first WINDOW_UPDATE increment
 - `priority`: first PRIORITY tuple (or empty)
 
+Emission timing:
+
+- Emits as soon as `SETTINGS + WINDOW_UPDATE` are observed.
+- Falls back to emit after first parsed frame once `SETTINGS` exists (for clients that delay WINDOW_UPDATE/PRIORITY).
+
 `script/envoy.yml` forwards these values to headers:
 
 - `X-H2-FP`
