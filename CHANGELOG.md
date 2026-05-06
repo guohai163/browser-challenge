@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.35 - 2026-05-07
+
+### Changed
+- Kept Chinese status prompts on demo page and adapted status rendering to minimal backend response fields (`blocked`, `riskLevel`), preserving clear `通过/拦截` user messaging without exposing internal block reasons.
+- Switched displayed publish time on demo page to browser local time formatting.
+- Updated `application.yml` app metadata before release (`app.version` and `app.published-at`).
+- Updated Maven project version in `pom.xml` to `0.1.35`.
+
 ## v0.1.34 - 2026-05-07
 
 ### Changed

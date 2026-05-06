@@ -102,19 +102,25 @@
     }
 
     function renderStatus(result, method) {
-        if (!result || typeof result.accepted !== "boolean") {
+        if (!result || typeof result.blocked !== "boolean") {
             statusEl.innerHTML = "";
             return;
         }
-        const ok = result.accepted === true;
+        const ok = result.blocked === false;
         const cls = ok ? "ok" : "fail";
         const title = ok ? "通过" : "拦截";
         const risk = result.riskLevel || "unknown";
-        const reason = result.reason || "";
         statusEl.innerHTML =
             `<span class="status ${cls}">` +
-            `结果：${title} ｜ 方式：${(method || "").toUpperCase()} ｜ 风险等级：${risk} ｜ 原因：${reason}` +
+            `结果：${title} ｜ 方式：${(method || "").toUpperCase()} ｜ 风险等级：${risk}` +
             `</span>`;
+    }
+
+    function formatLocalTime(input) {
+        if (!input) return "unknown";
+        const dt = new Date(input);
+        if (Number.isNaN(dt.getTime())) return input;
+        return dt.toLocaleString(undefined, { hour12: false });
     }
 
     async function loadMeta() {
@@ -124,7 +130,7 @@
             const data = await res.json();
             metaBannerEl.innerHTML =
                 `<div class="meta-title">当前程序信息</div>` +
-                `<div class="meta-value">版本：${data.version || "unknown"} ｜ 发布时间：${data.publishedAt || "unknown"}</div>`;
+                `<div class="meta-value">版本：${data.version || "unknown"} ｜ 发布时间：${formatLocalTime(data.publishedAt)}</div>`;
         } catch (e) {
             metaBannerEl.innerHTML =
                 `<div class="meta-title">当前程序信息</div>` +
