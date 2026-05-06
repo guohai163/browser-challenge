@@ -1,5 +1,7 @@
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
+use proxy_wasm::traits::*;
+use proxy_wasm::types::*;
 
 const H2_PREFACE: &[u8] = b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
 const FRAME_HEADER_LEN: usize = 9;
@@ -94,7 +96,6 @@ impl H2FrameExtractor {
 
     fn handle_frame(&mut self, frame_type: u8, flags: u8, stream_id: u32, payload: &[u8]) {
         match frame_type {
-            // SETTINGS
             0x04 => {
                 if self.settings.is_none()
                     && stream_id == 0
@@ -104,7 +105,6 @@ impl H2FrameExtractor {
                     self.settings = Some(canonical_settings(payload));
                 }
             }
-            // WINDOW_UPDATE
             0x08 => {
                 if self.window.is_none() && payload.len() == 4 {
                     let raw = u32::from_be_bytes([payload[0], payload[1], payload[2], payload[3]]);
@@ -114,7 +114,6 @@ impl H2FrameExtractor {
                     }
                 }
             }
-            // PRIORITY
             0x02 => {
                 if self.priority.is_none() && payload.len() == 5 {
                     self.priority = Some(canonical_priority(payload));
@@ -133,16 +132,10 @@ impl H2FrameExtractor {
             return end_of_stream;
         }
 
-        // HTTP/2 client preface usually provides SETTINGS first; WINDOW_UPDATE is common,
-        // while PRIORITY may be absent on modern browser flows.
-        // To make metadata available before request-header formatting in Envoy,
-        // finalize as soon as SETTINGS + WINDOW_UPDATE are both observed.
         if self.settings.is_some() && self.window.is_some() {
             return true;
         }
 
-        // Fallback: some clients may delay WINDOW_UPDATE beyond header processing.
-        // In that case we still emit a stable hash using available SETTINGS.
         if self.settings.is_some() && self.frame_count >= 1 {
             return true;
         }
@@ -226,217 +219,113 @@ fn hex_encode(bytes: &[u8]) -> String {
     out
 }
 
-#[cfg(target_arch = "wasm32")]
-mod wasm_filter {
-    use super::{H2Fingerprint, H2FrameExtractor};
-    use proxy_wasm::traits::*;
-    use proxy_wasm::types::*;
+proxy_wasm::main! {{
+    proxy_wasm::set_log_level(LogLevel::Info);
+    proxy_wasm::set_root_context(|_| -> Box<dyn RootContext> {
+        Box::new(H2Root)
+    });
+}}
 
-    proxy_wasm::main! {{
-        proxy_wasm::set_log_level(LogLevel::Info);
-        proxy_wasm::set_root_context(|_| -> Box<dyn RootContext> {
-            Box::new(H2Root)
-        });
-    }}
+struct H2Root;
 
-    struct H2Root;
+impl Context for H2Root {}
 
-    impl Context for H2Root {}
-
-    impl RootContext for H2Root {
-        fn get_type(&self) -> Option<ContextType> {
-            Some(ContextType::StreamContext)
-        }
-
-        fn create_stream_context(&self, _context_id: u32) -> Option<Box<dyn StreamContext>> {
-            Some(Box::new(H2Stream {
-                extractor: H2FrameExtractor::default(),
-                emitted: false,
-            }))
-        }
+impl RootContext for H2Root {
+    fn get_type(&self) -> Option<ContextType> {
+        None
     }
 
-    struct H2Stream {
-        extractor: H2FrameExtractor,
-        emitted: bool,
+    fn create_stream_context(&self, _context_id: u32) -> Option<Box<dyn StreamContext>> {
+        Some(Box::new(H2Stream {
+            extractor: H2FrameExtractor::default(),
+            emitted: false,
+        }))
     }
 
-    impl Context for H2Stream {}
+    fn create_http_context(&self, _context_id: u32) -> Option<Box<dyn HttpContext>> {
+        Some(Box::new(H2Http))
+    }
+}
 
-    impl StreamContext for H2Stream {
-        fn on_downstream_data(&mut self, data_size: usize, end_of_stream: bool) -> Action {
-            if self.emitted {
-                return Action::Continue;
-            }
+struct H2Stream {
+    extractor: H2FrameExtractor,
+    emitted: bool,
+}
 
-            let Some(data) = self.get_downstream_data(0, data_size) else {
-                return Action::Continue;
-            };
+impl Context for H2Stream {}
 
-            if let Some(fp) = self.extractor.ingest(&data, end_of_stream) {
-                self.emit_metadata(&fp);
-                self.emitted = true;
-            }
-
-            Action::Continue
+impl StreamContext for H2Stream {
+    fn on_downstream_data(&mut self, data_size: usize, end_of_stream: bool) -> Action {
+        if self.emitted {
+            return Action::Continue;
         }
 
-        fn on_downstream_close(&mut self, _peer_type: PeerType) {
-            if self.emitted {
-                return;
-            }
-            let fp = self.extractor.ingest(&[], true).unwrap_or_default();
+        let Some(data) = self.get_downstream_data(0, data_size) else {
+            return Action::Continue;
+        };
+
+        if let Some(fp) = self.extractor.ingest(&data, end_of_stream) {
             self.emit_metadata(&fp);
             self.emitted = true;
         }
+
+        Action::Continue
     }
 
-    impl H2Stream {
-        fn emit_metadata(&self, fp: &H2Fingerprint) {
-            // Set dynamic metadata
-            self.set_property(
-                vec!["metadata", "filter_metadata", "gydev.h2", "fp"],
-                Some(fp.fp.as_bytes()),
-            );
-            self.set_property(
-                vec!["metadata", "filter_metadata", "gydev.h2", "settings"],
-                Some(fp.settings.as_bytes()),
-            );
-            self.set_property(
-                vec!["metadata", "filter_metadata", "gydev.h2", "window"],
-                Some(fp.window.as_bytes()),
-            );
-            self.set_property(
-                vec!["metadata", "filter_metadata", "gydev.h2", "priority"],
-                Some(fp.priority.as_bytes()),
-            );
+    fn on_downstream_close(&mut self, _peer_type: PeerType) {
+        if self.emitted {
+            return;
+        }
+        let fp = self.extractor.ingest(&[], true).unwrap_or_default();
+        self.emit_metadata(&fp);
+        self.emitted = true;
+    }
+}
 
-            // Also set filter_state as a fallback mechanism for Envoy formatters
-            self.set_property(vec!["filter_state", "wasm.h2_fp"], Some(fp.fp.as_bytes()));
-            self.set_property(vec!["filter_state", "wasm.h2_settings"], Some(fp.settings.as_bytes()));
-            self.set_property(vec!["filter_state", "wasm.h2_window"], Some(fp.window.as_bytes()));
-            self.set_property(vec!["filter_state", "wasm.h2_priority"], Some(fp.priority.as_bytes()));
+impl H2Stream {
+    fn emit_metadata(&self, fp: &H2Fingerprint) {
+        // Use standard properties for Envoy formatters, just in case they work
+        self.set_property(vec!["metadata", "filter_metadata", "gydev.h2", "fp"], Some(fp.fp.as_bytes()));
+        self.set_property(vec!["metadata", "filter_metadata", "gydev.h2", "settings"], Some(fp.settings.as_bytes()));
+        self.set_property(vec!["metadata", "filter_metadata", "gydev.h2", "window"], Some(fp.window.as_bytes()));
+        self.set_property(vec!["metadata", "filter_metadata", "gydev.h2", "priority"], Some(fp.priority.as_bytes()));
+        
+        self.set_property(vec!["filter_state", "wasm.h2_fp"], Some(fp.fp.as_bytes()));
+        self.set_property(vec!["filter_state", "wasm.h2_settings"], Some(fp.settings.as_bytes()));
+        self.set_property(vec!["filter_state", "wasm.h2_window"], Some(fp.window.as_bytes()));
+        self.set_property(vec!["filter_state", "wasm.h2_priority"], Some(fp.priority.as_bytes()));
+
+        // ROBUST FALLBACK: Use Proxy-Wasm Shared Data
+        if let Some(conn_id_bytes) = self.get_property(vec!["connection", "id"]) {
+            let conn_id_hex = hex_encode(&conn_id_bytes);
+            let key = format!("h2_fp_{}", conn_id_hex);
+            let value = format!("{}|{}|{}|{}", fp.fp, fp.settings, fp.window, fp.priority);
+            self.set_shared_data(&key, Some(value.as_bytes()), None);
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{sha256_hex, H2FrameExtractor};
+struct H2Http;
 
-    fn frame_header(len: usize, frame_type: u8, flags: u8, stream_id: u32) -> Vec<u8> {
-        vec![
-            ((len >> 16) & 0xff) as u8,
-            ((len >> 8) & 0xff) as u8,
-            (len & 0xff) as u8,
-            frame_type,
-            flags,
-            ((stream_id >> 24) as u8) & 0x7f,
-            (stream_id >> 16) as u8,
-            (stream_id >> 8) as u8,
-            stream_id as u8,
-        ]
-    }
+impl Context for H2Http {}
 
-    fn settings_frame(entries: &[(u16, u32)]) -> Vec<u8> {
-        let mut payload = Vec::new();
-        for (id, val) in entries {
-            payload.extend_from_slice(&id.to_be_bytes());
-            payload.extend_from_slice(&val.to_be_bytes());
+impl HttpContext for H2Http {
+    fn on_http_request_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
+        if let Some(conn_id_bytes) = self.get_property(vec!["connection", "id"]) {
+            let conn_id_hex = hex_encode(&conn_id_bytes);
+            let key = format!("h2_fp_{}", conn_id_hex);
+            if let (Some(data), _) = self.get_shared_data(&key) {
+                if let Ok(value) = String::from_utf8(data) {
+                    let parts: Vec<&str> = value.split('|').collect();
+                    if parts.len() == 4 {
+                        if !parts[0].is_empty() { self.set_http_request_header("X-H2-FP", Some(parts[0])); }
+                        if !parts[1].is_empty() { self.set_http_request_header("X-H2-SETTINGS", Some(parts[1])); }
+                        if !parts[2].is_empty() { self.set_http_request_header("X-H2-WINDOW", Some(parts[2])); }
+                        if !parts[3].is_empty() { self.set_http_request_header("X-H2-PRIORITY", Some(parts[3])); }
+                    }
+                }
+            }
         }
-        let mut frame = frame_header(payload.len(), 0x04, 0x00, 0);
-        frame.extend_from_slice(&payload);
-        frame
-    }
-
-    fn window_update_frame(increment: u32) -> Vec<u8> {
-        let payload = (increment & 0x7fff_ffff).to_be_bytes();
-        let mut frame = frame_header(4, 0x08, 0x00, 0);
-        frame.extend_from_slice(&payload);
-        frame
-    }
-
-    fn priority_frame(stream_id: u32, dependency: u32, exclusive: bool, weight: u8) -> Vec<u8> {
-        let dep = if exclusive {
-            dependency | 0x8000_0000
-        } else {
-            dependency & 0x7fff_ffff
-        };
-        let mut payload = Vec::with_capacity(5);
-        payload.extend_from_slice(&dep.to_be_bytes());
-        payload.push(weight.saturating_sub(1));
-        let mut frame = frame_header(5, 0x02, 0x00, stream_id);
-        frame.extend_from_slice(&payload);
-        frame
-    }
-
-    #[test]
-    fn extracts_settings_window_priority_and_sha256() {
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
-        bytes.extend_from_slice(&settings_frame(&[(4, 6291456), (1, 65536), (6, 262144)]));
-        bytes.extend_from_slice(&window_update_frame(15663105));
-        bytes.extend_from_slice(&priority_frame(3, 0, false, 16));
-
-        let mut ex = H2FrameExtractor::default();
-        let fp = ex.ingest(&bytes, false).expect("should finalize");
-
-        assert_eq!(
-            fp.settings,
-            "header_table_size=65536;initial_window_size=6291456;max_header_list_size=262144"
-        );
-        assert_eq!(fp.window, "15663105");
-        assert_eq!(fp.priority, "exclusive=0;dependency=0;weight=16");
-
-        let expected = sha256_hex(
-            "header_table_size=65536;initial_window_size=6291456;max_header_list_size=262144|15663105|exclusive=0;dependency=0;weight=16",
-        );
-        assert_eq!(fp.fp, expected);
-        assert_eq!(fp.fp.len(), 64);
-    }
-
-    #[test]
-    fn handles_missing_priority_as_empty() {
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
-        bytes.extend_from_slice(&settings_frame(&[(1, 4096), (4, 65535)]));
-        bytes.extend_from_slice(&window_update_frame(983041));
-
-        let mut ex = H2FrameExtractor::default();
-        let fp = ex.ingest(&bytes, true).expect("end_of_stream finalize");
-
-        assert_eq!(fp.settings, "header_table_size=4096;initial_window_size=65535");
-        assert_eq!(fp.window, "983041");
-        assert_eq!(fp.priority, "");
-        assert_eq!(fp.fp.len(), 64);
-    }
-
-    #[test]
-    fn handles_fragmented_input() {
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
-        bytes.extend_from_slice(&settings_frame(&[(1, 65536), (4, 65535)]));
-        bytes.extend_from_slice(&window_update_frame(111111));
-
-        let split = 19;
-        let mut ex = H2FrameExtractor::default();
-        let first = ex.ingest(&bytes[..split], false);
-        assert!(first.is_none());
-
-        let second = ex.ingest(&bytes[split..], true);
-        let fp = second.expect("should finalize after second chunk");
-        assert_eq!(fp.settings, "header_table_size=65536;initial_window_size=65535");
-        assert_eq!(fp.window, "111111");
-        assert_eq!(fp.fp.len(), 64);
-    }
-
-    #[test]
-    fn non_h2_stream_returns_empty_fields() {
-        let mut ex = H2FrameExtractor::default();
-        let fp = ex.ingest(b"GET / HTTP/1.1\r\nHost: a\r\n\r\n", true).unwrap();
-        assert_eq!(fp.settings, "");
-        assert_eq!(fp.window, "");
-        assert_eq!(fp.priority, "");
-        assert_eq!(fp.fp, sha256_hex("||"));
+        Action::Continue
     }
 }

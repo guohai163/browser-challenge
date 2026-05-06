@@ -97,24 +97,20 @@ static_resources:
                             value: "%TLS_JA4_FINGERPRINT%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
 
-                        - header:
-                            key: X-H2-FP
-                            value: "%FILTER_STATE(wasm.h2_fp)%"
-                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
-                        - header:
-                            key: X-H2-SETTINGS
-                            value: "%FILTER_STATE(wasm.h2_settings)%"
-                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
-                        - header:
-                            key: X-H2-WINDOW
-                            value: "%FILTER_STATE(wasm.h2_window)%"
-                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
-                        - header:
-                            key: X-H2-PRIORITY
-                            value: "%FILTER_STATE(wasm.h2_priority)%"
-                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
-
                 http_filters:
+                  - name: envoy.filters.http.wasm
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+                      config:
+                        name: h2_fingerprint_injector
+                        root_id: h2_fingerprint_injector
+                        vm_config:
+                          vm_id: h2_fingerprint_vm
+                          runtime: envoy.wasm.runtime.v8
+                          code:
+                            local:
+                              filename: /etc/envoy/plugins/h2_fp.wasm
+                          allow_precompiled: true
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
