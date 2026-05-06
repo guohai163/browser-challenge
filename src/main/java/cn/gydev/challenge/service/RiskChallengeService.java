@@ -236,10 +236,22 @@ public class RiskChallengeService {
         String prefix = parts[0];
 
         String ua = header(request, "User-Agent");
-        String lang = header(request, "Accept-Language");
+        String lang = canonicalPrimaryLanguage(header(request, "Accept-Language"));
         String secChUa = canonicalSecChUa(header(request, "Sec-CH-UA"));
         String expected = sha256Hex(ua + "|" + lang + "|" + secChUa).substring(0, HEADER_HASH_PREFIX_LEN);
         return expected.equals(prefix);
+    }
+
+    private String canonicalPrimaryLanguage(String acceptLanguage) {
+        if (acceptLanguage == null || acceptLanguage.isBlank()) {
+            return "";
+        }
+        String first = acceptLanguage.split(",")[0].trim();
+        int qIdx = first.indexOf(";q=");
+        if (qIdx > 0) {
+            return first.substring(0, qIdx).trim();
+        }
+        return first;
     }
 
     private String canonicalSecChUa(String secChUaHeader) {
