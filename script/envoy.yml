@@ -44,16 +44,15 @@ static_resources:
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.wasm.v3.Wasm
                 config:
-                  config:
-                    name: h2_fingerprint_extractor
-                    root_id: h2_fingerprint_extractor
-                    vm_config:
-                      vm_id: h2_fingerprint_vm
-                      runtime: envoy.wasm.runtime.v8
-                      code:
-                        local:
-                          filename: /etc/envoy/plugins/h2_fp.wasm
-                      allow_precompiled: true
+                  name: h2_fingerprint_extractor
+                  root_id: h2_fingerprint_extractor
+                  vm_config:
+                    vm_id: h2_fingerprint_vm
+                    runtime: envoy.wasm.runtime.v8
+                    code:
+                      local:
+                        filename: /etc/envoy/plugins/h2_fp.wasm
+                    allow_precompiled: true
             - name: envoy.filters.network.http_connection_manager
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager

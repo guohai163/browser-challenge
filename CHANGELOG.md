@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.14 - 2026-05-06
+
+### Fixed
+- Fixed Envoy Wasm filter config structure in `script/envoy.yml` by removing invalid nested `config.config` and using valid `envoy.extensions.wasm.v3.PluginConfig` fields for Envoy `v1.35`.
+
+### Changed
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+
 ## v0.1.13 - 2026-05-06
 
 ### Changed
