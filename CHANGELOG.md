@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.16 - 2026-05-06
+
+### Changed
+- Updated TLS certificate file paths in `script/envoy.yml` from `fullchain1.pem`/`privkey1.pem` to `fullchain.pem`/`privkey.pem`.
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+
 ## v0.1.15 - 2026-05-06
 
 ### Changed
