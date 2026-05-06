@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.20 - 2026-05-06
+
+### Fixed
+- Fixed Envoy header formatter expressions in `script/envoy.yml` by removing unsupported `:Z` suffix from `%DYNAMIC_METADATA(...)%` commands to satisfy newer Envoy parser validation.
+
+### Changed
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+
 ## v0.1.16 - 2026-05-06
 
 ### Changed
