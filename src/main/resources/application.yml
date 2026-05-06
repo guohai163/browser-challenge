@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: springboot4-jdk21-demo
+
+server:
+  port: 8080

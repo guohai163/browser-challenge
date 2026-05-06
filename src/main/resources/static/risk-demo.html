@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gydev Guard Demo</title>
+    <style>
+        body { font-family: "Segoe UI", sans-serif; margin: 24px; background: #f6f8fb; color: #111827; }
+        .card { max-width: 960px; margin: 0 auto; background: #fff; border: 1px solid #dbe2ea; border-radius: 12px; padding: 20px; }
+        textarea, input, select { width: 100%; box-sizing: border-box; margin: 8px 0 14px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+        textarea { min-height: 90px; resize: vertical; }
+        .row { display: flex; gap: 10px; flex-wrap: wrap; }
+        button { border: none; padding: 10px 14px; border-radius: 8px; background: #2563eb; color: #fff; cursor: pointer; }
+        pre { background: #0b1220; color: #dbe7ff; border-radius: 10px; padding: 12px; max-height: 360px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>Gydev 防护 DEMO（SDK 封装版）</h2>
+    <p>流程：challenge/init → gydev_token → Gydev-Sentinel-Proof-Token → GET/POST 提交。</p>
+
+    <label>提交方式</label>
+    <select id="method">
+        <option value="get">GET</option>
+        <option value="post">POST</option>
+    </select>
+
+    <label>内容 content</label>
+    <textarea id="content" placeholder="输入要提交的数据"></textarea>
+
+    <label>gydev_token</label>
+    <input id="gydevToken" readonly placeholder="点击生成 Token">
+
+    <label>Gydev-Sentinel-Proof-Token</label>
+    <input id="sentinelToken" readonly placeholder="自动生成 PoW Token">
+
+    <div class="row">
+        <button id="btnGenerate">生成 Token</button>
+        <button id="btnSubmit">提交数据</button>
+        <button id="btnClear">清空输出</button>
+    </div>
+
+    <h3>输出</h3>
+    <pre id="output"></pre>
+</div>
+
+<script src="/gydev-guard-sdk.js"></script>
+<script>
+    const sdk = new window.GydevGuardSdk();
+    sdk.init({
+        features: {
+            tlsFingerprint: true,
+            h2Fingerprint: true,
+            gydevToken: true,
+            sentinelProofToken: true
+        }
+    });
+
+    const methodEl = document.getElementById("method");
+    const contentEl = document.getElementById("content");
+    const gydevTokenEl = document.getElementById("gydevToken");
+    const sentinelTokenEl = document.getElementById("sentinelToken");
+    const outputEl = document.getElementById("output");
+
+    function print(obj) {
+        outputEl.textContent = JSON.stringify(obj, null, 2);
+    }
+
+    async function generateAllTokens() {
+        const challenge = await sdk.initChallenge();
+        const gydevToken = await sdk.createGydevToken();
+        const sentinel = await sdk.createSentinelProofToken(gydevToken);
+        gydevTokenEl.value = gydevToken;
+        sentinelTokenEl.value = sentinel;
+        print({
+            stage: "generated",
+            challengeId: challenge.challengeId,
+            pow: challenge.pow,
+            gydevTokenPreview: gydevToken.slice(0, 42) + "...",
+            sentinelPreview: sentinel.slice(0, 42) + "..."
+        });
+    }
+
+    async function submit() {
+        const content = contentEl.value.trim();
+        const gydevToken = gydevTokenEl.value.trim();
+        const sentinel = sentinelTokenEl.value.trim();
+        if (!content) throw new Error("content 不能为空");
+        if (!gydevToken) throw new Error("请先生成 gydev_token");
+        if (!sentinel) throw new Error("请先生成 Gydev-Sentinel-Proof-Token");
+
+        const method = methodEl.value;
+        const data = method === "get"
+            ? await sdk.submitGet(content, gydevToken, sentinel)
+            : await sdk.submitPost(content, gydevToken, sentinel);
+        print({ stage: "submit", method, response: data });
+    }
+
+    document.getElementById("btnGenerate").addEventListener("click", async () => {
+        try { await generateAllTokens(); } catch (e) { print({ error: e.message }); }
+    });
+    document.getElementById("btnSubmit").addEventListener("click", async () => {
+        try { await submit(); } catch (e) { print({ error: e.message }); }
+    });
+    document.getElementById("btnClear").addEventListener("click", () => outputEl.textContent = "");
+</script>
+</body>
+</html>
+
