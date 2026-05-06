@@ -63,7 +63,7 @@ class GydevGuardSdk {
     }
     const ua = navigator.userAgent || "";
     const lang = navigator.language || "";
-    const secChUa = navigator.userAgentData ? JSON.stringify(navigator.userAgentData.brands || []) : "";
+    const secChUa = this.canonicalSecChUaFromNavigator();
     const headerPrefix = (await this.sha256Hex(`${ua}|${lang}|${secChUa}`)).slice(0, 12);
     const fpHash = `${headerPrefix}:${(await this.collectDeviceHash()).slice(0, 24)}`;
     const payload = {
@@ -165,6 +165,13 @@ class GydevGuardSdk {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
     const sr = `${screen.width}x${screen.height}x${screen.colorDepth}`;
     return await this.sha256Hex([ua, lang, tz, sr].join("|"));
+  }
+
+  canonicalSecChUaFromNavigator() {
+    if (!navigator.userAgentData || !Array.isArray(navigator.userAgentData.brands)) return "";
+    return navigator.userAgentData.brands
+      .map((b) => `${b.brand || ""}/${b.version || ""}`)
+      .join(",");
   }
 
   async sha256Hex(text) {

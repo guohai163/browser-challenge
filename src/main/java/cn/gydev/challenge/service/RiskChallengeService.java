@@ -5,7 +5,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -235,9 +237,41 @@ public class RiskChallengeService {
 
         String ua = header(request, "User-Agent");
         String lang = header(request, "Accept-Language");
-        String secChUa = header(request, "Sec-CH-UA");
+        String secChUa = canonicalSecChUa(header(request, "Sec-CH-UA"));
         String expected = sha256Hex(ua + "|" + lang + "|" + secChUa).substring(0, HEADER_HASH_PREFIX_LEN);
         return expected.equals(prefix);
+    }
+
+    private String canonicalSecChUa(String secChUaHeader) {
+        if (secChUaHeader == null || secChUaHeader.isBlank()) {
+            return "";
+        }
+        List<String> items = new ArrayList<>();
+        String[] parts = secChUaHeader.split(",");
+        for (String part : parts) {
+            String p = part.trim();
+            int q1 = p.indexOf('"');
+            int q2 = p.indexOf('"', q1 + 1);
+            int vPos = p.indexOf(";v=");
+            if (q1 >= 0 && q2 > q1 && vPos > q2) {
+                String brand = p.substring(q1 + 1, q2);
+                String versionRaw = p.substring(vPos + 3).trim();
+                String version = stripQuotes(versionRaw);
+                items.add(brand + "/" + version);
+            }
+        }
+        return String.join(",", items);
+    }
+
+    private String stripQuotes(String input) {
+        if (input == null || input.isBlank()) {
+            return "";
+        }
+        String out = input.trim();
+        if (out.length() >= 2 && out.startsWith("\"") && out.endsWith("\"")) {
+            return out.substring(1, out.length() - 1);
+        }
+        return out;
     }
 
     private TokenPayload parseTokenPayload(String riskToken) {
