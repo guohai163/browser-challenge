@@ -7,6 +7,17 @@
     <style>
         body { font-family: "Segoe UI", sans-serif; margin: 24px; background: #f6f8fb; color: #111827; }
         .card { max-width: 960px; margin: 0 auto; background: #fff; border: 1px solid #dbe2ea; border-radius: 12px; padding: 20px; }
+        .meta-banner {
+            background: linear-gradient(135deg, #0f766e, #2563eb);
+            color: #fff;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.22);
+        }
+        .meta-banner .meta-title { font-size: 14px; opacity: 0.92; margin-bottom: 4px; }
+        .meta-banner .meta-value { font-size: 18px; letter-spacing: 0.2px; }
         textarea, input, select { width: 100%; box-sizing: border-box; margin: 8px 0 14px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
         textarea { min-height: 90px; resize: vertical; }
         .row { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -33,6 +44,10 @@
 </head>
 <body>
 <div class="card">
+    <div id="metaBanner" class="meta-banner">
+        <div class="meta-title">当前程序信息</div>
+        <div class="meta-value">版本：加载中... ｜ 发布时间：加载中...</div>
+    </div>
     <h2>Gydev 防护 DEMO（SDK 封装版）</h2>
     <p>流程：challenge/init → Gydev-Token → Gydev-Sentinel-Proof-Token → GET/POST 提交。</p>
 
@@ -80,6 +95,7 @@
     const sentinelTokenEl = document.getElementById("sentinelToken");
     const outputEl = document.getElementById("output");
     const statusEl = document.getElementById("status");
+    const metaBannerEl = document.getElementById("metaBanner");
 
     function print(obj) {
         outputEl.textContent = JSON.stringify(obj, null, 2);
@@ -99,6 +115,21 @@
             `<span class="status ${cls}">` +
             `结果：${title} ｜ 方式：${(method || "").toUpperCase()} ｜ 风险等级：${risk} ｜ 原因：${reason}` +
             `</span>`;
+    }
+
+    async function loadMeta() {
+        try {
+            const res = await fetch("/api/meta");
+            if (!res.ok) throw new Error("load meta failed");
+            const data = await res.json();
+            metaBannerEl.innerHTML =
+                `<div class="meta-title">当前程序信息</div>` +
+                `<div class="meta-value">版本：${data.version || "unknown"} ｜ 发布时间：${data.publishedAt || "unknown"}</div>`;
+        } catch (e) {
+            metaBannerEl.innerHTML =
+                `<div class="meta-title">当前程序信息</div>` +
+                `<div class="meta-value">版本：unknown ｜ 发布时间：unknown</div>`;
+        }
     }
 
     async function generateAllTokens() {
@@ -143,6 +174,8 @@
         outputEl.textContent = "";
         statusEl.innerHTML = "";
     });
+
+    loadMeta();
 </script>
 </body>
 </html>

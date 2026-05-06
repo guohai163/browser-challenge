@@ -4,3 +4,7 @@ spring:
 
 server:
   port: 8080
+
+app:
+  version: v0.1.7
+  published-at: 2026-05-06T12:35:00+08:00
