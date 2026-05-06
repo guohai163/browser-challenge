@@ -5,7 +5,7 @@ COPY script/h2-fp-plugin ./script/h2-fp-plugin
 RUN rustup target add wasm32-unknown-unknown
 RUN cargo build --manifest-path ./script/h2-fp-plugin/Cargo.toml --target wasm32-unknown-unknown --release
 
-FROM envoyproxy/envoy-contrib:v1.31.4
+FROM envoyproxy/envoy-contrib:v1.35-latest
 
 COPY script/envoy.yml /etc/envoy/envoy.yml
 COPY --from=wasm-build /src/script/h2-fp-plugin/target/wasm32-unknown-unknown/release/h2_fp_plugin.wasm /etc/envoy/plugins/h2_fp.wasm

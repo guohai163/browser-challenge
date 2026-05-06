@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.13 - 2026-05-06
+
+### Changed
+- Updated Envoy base image in `script/Dockerfile.envoy` from `envoyproxy/envoy-contrib:v1.31.4` to `envoyproxy/envoy-contrib:v1.35-latest`.
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+
 ## v0.1.12 - 2026-05-06
 
 ### Added
