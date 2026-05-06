@@ -99,19 +99,19 @@ static_resources:
 
                         - header:
                             key: X-H2-FP
-                            value: "%DYNAMIC_METADATA([\"gydev.h2\",\"fp\"])%"
+                            value: "%DYNAMIC_METADATA(gydev.h2:fp)%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                         - header:
                             key: X-H2-SETTINGS
-                            value: "%DYNAMIC_METADATA([\"gydev.h2\",\"settings\"])%"
+                            value: "%DYNAMIC_METADATA(gydev.h2:settings)%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                         - header:
                             key: X-H2-WINDOW
-                            value: "%DYNAMIC_METADATA([\"gydev.h2\",\"window\"])%"
+                            value: "%DYNAMIC_METADATA(gydev.h2:window)%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                         - header:
                             key: X-H2-PRIORITY
-                            value: "%DYNAMIC_METADATA([\"gydev.h2\",\"priority\"])%"
+                            value: "%DYNAMIC_METADATA(gydev.h2:priority)%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
 
                 http_filters:
