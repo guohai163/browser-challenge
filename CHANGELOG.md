@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.33 - 2026-05-07
+
+### Fixed
+- Relaxed Safari-family H2 browser detection in `TlsClassifierService` to support iOS Safari variants that differ in `h2_window` and may omit `unknown=1`.
+- Added iOS Safari regression test in `TlsClassifierServiceTest` to ensure Safari H2 core settings (`enable_push=0;max_concurrent_streams=100;initial_window_size=2097152`) are classified as `browser/high` with non-fixed positive window values.
+
+### Changed
+- Updated Maven project version in `pom.xml` to `0.1.33`.
+
 ## v0.1.32 - 2026-05-07
 
 ### Fixed

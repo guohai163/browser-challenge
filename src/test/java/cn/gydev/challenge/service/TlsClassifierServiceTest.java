@@ -126,4 +126,24 @@ class TlsClassifierServiceTest {
         assertThat(result.get("type")).isEqualTo("browser");
         assertThat(result.get("confidence")).isEqualTo("high");
     }
+
+    @Test
+    void shouldClassifyIosSafariAsBrowserWhenSafariH2SettingsPresentWithDifferentWindow() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1");
+        request.addHeader("Sec-CH-UA", "\"Not:A-Brand\";v=\"99\", \"Safari\";v=\"18\"");
+        request.addHeader("Sec-Fetch-Site", "same-origin");
+        request.addHeader("Accept-Language", "zh-CN,zh-Hans;q=0.9");
+        request.addHeader("X-H2-FP", "ios-safari-h2-hash");
+        request.addHeader("X-H2-SETTINGS", "enable_push=0;max_concurrent_streams=100;initial_window_size=2097152");
+        request.addHeader("X-H2-WINDOW", "12517377");
+        request.addHeader("X-H2-PRIORITY", "");
+        request.addHeader("X-JA3", "ios-safari-ja3");
+        request.addHeader("X-JA4", "ios-safari-ja4");
+
+        Map<String, Object> result = service.classify(request);
+
+        assertThat(result.get("type")).isEqualTo("browser");
+        assertThat(result.get("confidence")).isEqualTo("high");
+    }
 }

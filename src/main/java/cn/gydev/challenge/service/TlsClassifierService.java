@@ -214,15 +214,31 @@ public class TlsClassifierService {
                 && settings.contains("max_header_list_size=262144");
         boolean hasChromeLikeWindow = "15663105".equals(window);
 
-        // Safari 常见 H2 指纹：settings 中包含 unknown=1，且窗口值稳定在 10420225。
+        // Safari（含 iOS）常见 H2 指纹：
+        // settings 具备 Safari 家族核心特征；window 允许不同设备/版本间波动。
         boolean hasSafariLikeSettings = settings.contains("enable_push=0")
                 && settings.contains("max_concurrent_streams=100")
-                && settings.contains("initial_window_size=2097152")
-                && settings.contains("unknown=1");
-        boolean hasSafariLikeWindow = "10420225".equals(window);
+                && settings.contains("initial_window_size=2097152");
+        boolean hasSafariLikeWindow = isPositiveInteger(window);
 
         return (hasChromeLikeSettings && hasChromeLikeWindow)
                 || (hasSafariLikeSettings && hasSafariLikeWindow);
+    }
+
+    private boolean isPositiveInteger(String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        for (int i = 0; i < value.length(); i++) {
+            if (!Character.isDigit(value.charAt(i))) {
+                return false;
+            }
+        }
+        try {
+            return Long.parseLong(value) > 0;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
     }
 
     private boolean looksLikeProgramH2(String h2Fp, String h2Settings, String h2Window, String h2Priority) {
