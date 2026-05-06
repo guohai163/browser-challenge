@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.31 - 2026-05-06
+
+### Fixed
+- Improved browser TLS/H2 classification in `TlsClassifierService` by adding structured browser-like H2 settings/window detection for real browser traffic forwarded by gateway fingerprints.
+- Added regression test coverage in `TlsClassifierServiceTest` for browser requests that provide hashed H2 fingerprint plus canonical browser H2 settings/window values.
+- Updated Envoy access log format in `script/envoy.yml` to output `h2_fp/h2_settings/h2_window/h2_priority` from request headers (`X-H2-*`) and keep metadata mirrors (`*_meta`) for debugging.
+
+### Changed
+- Updated Maven project version in `pom.xml` to `0.1.31`.
+
 ## v0.1.23 - 2026-05-06
 
 ### Changed

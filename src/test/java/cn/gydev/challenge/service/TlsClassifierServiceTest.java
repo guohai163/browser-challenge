@@ -86,4 +86,24 @@ class TlsClassifierServiceTest {
         assertThat(result.get("type")).isNotEqualTo("browser");
         assertThat(result.get("confidence")).isNotEqualTo("high");
     }
+
+    @Test
+    void shouldClassifyBrowserWhenH2SettingsMatchRealBrowserPattern() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36");
+        request.addHeader("Sec-CH-UA", "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"");
+        request.addHeader("Sec-Fetch-Site", "same-origin");
+        request.addHeader("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+        request.addHeader("X-H2-FP", "a0785471c8d36ae639d9cbfcca658ff9c7da11651a17a96e80552c533e50b4e5");
+        request.addHeader("X-H2-SETTINGS", "header_table_size=65536;enable_push=0;initial_window_size=6291456;max_header_list_size=262144");
+        request.addHeader("X-H2-WINDOW", "15663105");
+        request.addHeader("X-H2-PRIORITY", "");
+        request.addHeader("X-JA3", "d2676e052b6564b3ecc88bd70305e4b6");
+        request.addHeader("X-JA4", "t13d1516h2_8daaf6152771_d8a2da3f94cd");
+
+        Map<String, Object> result = service.classify(request);
+
+        assertThat(result.get("type")).isEqualTo("browser");
+        assertThat(result.get("confidence")).isEqualTo("high");
+    }
 }
