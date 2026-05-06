@@ -1,28 +1,16 @@
 services:
-  certgen:
-    image: alpine/openssl:3.3.2
-    container_name: browser-challenge-certgen
-    command: ["/bin/sh", "-c", "/work/script/gen-certs.sh /work/script/certs"]
-    volumes:
-      - ./:/work
-    working_dir: /work
-    restart: "no"
-
   spring-app:
-    image: ghcr.io/guohai/browser-challenge:latest
+    image: ghcr.io/guohai163/browser-challenge:latest
     container_name: browser-challenge-spring
     expose:
       - "8080"
     ports:
       - "8080:8080"
     restart: unless-stopped
-
   envoy:
-    image: ghcr.io/guohai/browser-challenge-envoy:latest
+    image: ghcr.io/guohai163/browser-challenge-envoy:latest
     container_name: browser-challenge-envoy
     depends_on:
-      certgen:
-        condition: service_completed_successfully
       spring-app:
         condition: service_started
     volumes:

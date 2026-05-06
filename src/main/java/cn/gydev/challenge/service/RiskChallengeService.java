@@ -296,9 +296,12 @@ public class RiskChallengeService {
         if (!(fpsObj instanceof Map<?, ?> fps)) {
             return "fingerprints=missing";
         }
-        String ja3 = String.valueOf(fps.getOrDefault("ja3", "")).trim();
-        String ja4 = String.valueOf(fps.getOrDefault("ja4", "")).trim();
-        String h2 = String.valueOf(fps.getOrDefault("h2", "")).trim();
+        Object ja3Obj = fps.get("ja3");
+        String ja3 = ja3Obj == null ? "" : String.valueOf(ja3Obj).trim();
+        Object ja4Obj = fps.get("ja4");
+        String ja4 = ja4Obj == null ? "" : String.valueOf(ja4Obj).trim();
+        Object h2Obj = fps.get("h2");
+        String h2 = h2Obj == null ? "" : String.valueOf(h2Obj).trim();
         return "type=" + tlsClassifierResult.getOrDefault("type", "unknown")
                 + ",confidence=" + tlsClassifierResult.getOrDefault("confidence", "low")
                 + ",ja3=" + (ja3.isBlank() ? "missing" : "ok")
