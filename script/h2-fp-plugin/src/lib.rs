@@ -222,17 +222,34 @@ fn hex_encode(bytes: &[u8]) -> String {
 proxy_wasm::main! {{
     proxy_wasm::set_log_level(LogLevel::Info);
     proxy_wasm::set_root_context(|_| -> Box<dyn RootContext> {
-        Box::new(H2Root)
+        Box::new(H2Root { is_injector: false })
     });
 }}
 
-struct H2Root;
+struct H2Root {
+    is_injector: bool,
+}
 
 impl Context for H2Root {}
 
 impl RootContext for H2Root {
+    fn on_configure(&mut self, _plugin_configuration_size: usize) -> bool {
+        if let Some(root_id_bytes) = self.get_property(vec!["plugin_root_id"]) {
+            if let Ok(root_id) = String::from_utf8(root_id_bytes) {
+                if root_id == "h2_fingerprint_injector" {
+                    self.is_injector = true;
+                }
+            }
+        }
+        true
+    }
+
     fn get_type(&self) -> Option<ContextType> {
-        None
+        if self.is_injector {
+            Some(ContextType::HttpContext)
+        } else {
+            Some(ContextType::StreamContext)
+        }
     }
 
     fn create_stream_context(&self, _context_id: u32) -> Option<Box<dyn StreamContext>> {
