@@ -72,10 +72,10 @@ static_resources:
                           upstream_cluster: "%UPSTREAM_CLUSTER%"
                           ja3: "%REQ(X-JA3)%"
                           ja4: "%REQ(X-JA4)%"
-                          h2_fp: "%REQ(X-H2-FP)%"
-                          h2_settings: "%REQ(X-H2-SETTINGS)%"
-                          h2_window: "%REQ(X-H2-WINDOW)%"
-                          h2_priority: "%REQ(X-H2-PRIORITY)%"
+                          h2_fp: "%DYNAMIC_METADATA(gydev.h2:fp)%"
+                          h2_settings: "%DYNAMIC_METADATA(gydev.h2:settings)%"
+                          h2_window: "%DYNAMIC_METADATA(gydev.h2:window)%"
+                          h2_priority: "%DYNAMIC_METADATA(gydev.h2:priority)%"
 
                 route_config:
                   name: local_route
@@ -99,19 +99,19 @@ static_resources:
 
                         - header:
                             key: X-H2-FP
-                            value: "%DYNAMIC_METADATA(gydev.h2:fp)%"
+                            value: "%FILTER_STATE(wasm.h2_fp)%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                         - header:
                             key: X-H2-SETTINGS
-                            value: "%DYNAMIC_METADATA(gydev.h2:settings)%"
+                            value: "%FILTER_STATE(wasm.h2_settings)%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                         - header:
                             key: X-H2-WINDOW
-                            value: "%DYNAMIC_METADATA(gydev.h2:window)%"
+                            value: "%FILTER_STATE(wasm.h2_window)%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                         - header:
                             key: X-H2-PRIORITY
-                            value: "%DYNAMIC_METADATA(gydev.h2:priority)%"
+                            value: "%FILTER_STATE(wasm.h2_priority)%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
 
                 http_filters:

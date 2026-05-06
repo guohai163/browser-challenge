@@ -293,7 +293,7 @@ mod wasm_filter {
 
     impl H2Stream {
         fn emit_metadata(&self, fp: &H2Fingerprint) {
-            // StreamInfo dynamic metadata path used by %DYNAMIC_METADATA(namespace:key)%
+            // Set dynamic metadata
             self.set_property(
                 vec!["metadata", "filter_metadata", "gydev.h2", "fp"],
                 Some(fp.fp.as_bytes()),
@@ -310,6 +310,12 @@ mod wasm_filter {
                 vec!["metadata", "filter_metadata", "gydev.h2", "priority"],
                 Some(fp.priority.as_bytes()),
             );
+
+            // Also set filter_state as a fallback mechanism for Envoy formatters
+            self.set_property(vec!["filter_state", "wasm.h2_fp"], Some(fp.fp.as_bytes()));
+            self.set_property(vec!["filter_state", "wasm.h2_settings"], Some(fp.settings.as_bytes()));
+            self.set_property(vec!["filter_state", "wasm.h2_window"], Some(fp.window.as_bytes()));
+            self.set_property(vec!["filter_state", "wasm.h2_priority"], Some(fp.priority.as_bytes()));
         }
     }
 }
