@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.1.40 - 2026-05-07
+
+### Added
+- Added Envoy JA3 listener-patch integration contract documentation (`script/envoy-patch/README.md`) describing `ja3_raw`, GREASE normalization, and `ja3_md5_normalized` output requirements.
+
+### Changed
+- Switched backend JA3 priority to normalized header input (`X-JA3-NORMALIZED-MD5`) with fallback to legacy `X-JA3`.
+- Extended TLS fingerprint payload to include `ja3Raw` and `ja3Normalized` fields for diagnostics.
+- Migrated whitelist schema and matching key toward normalized JA3 (`ja3_md5_normalized`) and audit field (`ja3_raw_normalized`).
+- Updated Envoy access log and request header wiring to include normalized JA3 fields (`X-JA3-NORMALIZED-MD5` and log keys).
+- Added tests covering normalized JA3 read priority and new fingerprint response fields.
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+- Updated Maven project version in `pom.xml` to `0.1.40`.
+
 ## v0.1.39 - 2026-05-07
 
 ### Changed

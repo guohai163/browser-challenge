@@ -72,6 +72,8 @@ public class RiskSignalGateService {
 
     public Map<String, Object> captureCurrentRequestToWhitelist(HttpServletRequest request, Map<String, Object> tlsClassifierResult) {
         String ja3 = readFingerprint(tlsClassifierResult, "ja3");
+        String ja3Raw = readFingerprint(tlsClassifierResult, "ja3Raw");
+        String ja3RawNormalized = readFingerprint(tlsClassifierResult, "ja3Normalized");
         String ja4 = readFingerprint(tlsClassifierResult, "ja4");
         String h2 = readFingerprint(tlsClassifierResult, "h2");
         BrowserIdentity identity = parseBrowserIdentity(header(request, "User-Agent"));
@@ -90,13 +92,24 @@ public class RiskSignalGateService {
         out.put("browserFamily", identity.family());
         out.put("majorVersion", identity.majorVersion());
         out.put("ja3", ja3);
+        out.put("ja3Raw", ja3Raw);
+        out.put("ja3RawNormalized", ja3RawNormalized);
         out.put("ja4", ja4);
         out.put("h2", h2);
         if (!failures.isEmpty()) {
             return out;
         }
 
-        whitelistRepository.upsert(identity.family(), identity.majorVersion(), ja3, ja4, h2, "browser_capture");
+        whitelistRepository.upsert(
+                identity.family(),
+                identity.majorVersion(),
+                normalized(ja3),
+                normalized(ja3RawNormalized),
+                normalized(ja3),
+                normalized(ja4),
+                normalized(h2),
+                "browser_capture"
+        );
         out.put("whitelisted", true);
         return out;
     }

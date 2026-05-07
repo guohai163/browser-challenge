@@ -128,7 +128,8 @@ class RiskChallengeServiceTest {
         request.addHeader("Accept-Language", LANG);
         request.addHeader("Sec-CH-UA", SEC_CH_UA);
         request.addHeader("Sec-Fetch-Site", "same-origin");
-        request.addHeader("X-JA3", "ja3-browser");
+        request.addHeader("X-JA3", "ja3-browser-legacy");
+        request.addHeader("X-JA3-NORMALIZED-MD5", "ja3-browser");
         request.addHeader("X-JA4", "ja4-browser");
         request.addHeader("X-H2-FP", "chrome-v1");
         request.setRemoteAddr("127.0.0.1");
@@ -141,7 +142,8 @@ class RiskChallengeServiceTest {
         request.addHeader("Accept-Language", LANG);
         request.addHeader("Sec-CH-UA", SEC_CH_UA);
         request.addHeader("Sec-Fetch-Site", "same-origin");
-        request.addHeader("X-JA3", "ja3-program");
+        request.addHeader("X-JA3", "ja3-program-legacy");
+        request.addHeader("X-JA3-NORMALIZED-MD5", "ja3-program");
         request.addHeader("X-JA4", "ja4-program");
         request.addHeader("X-H2-FP", "curl-h2");
         request.setRemoteAddr("127.0.0.1");

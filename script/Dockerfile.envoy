@@ -7,6 +7,11 @@ RUN cargo build --manifest-path ./script/h2-fp-plugin/Cargo.toml --target wasm32
 
 FROM envoyproxy/envoy-contrib:v1.35-latest
 
+# NOTE:
+# This image currently uses upstream Envoy binary.
+# JA3 raw extraction at listener stage requires custom Envoy patch build.
+# See script/envoy-patch/README.md for patch contract and integration requirements.
+
 COPY script/envoy.yml /etc/envoy/envoy.yml
 COPY --from=wasm-build /src/script/h2-fp-plugin/target/wasm32-unknown-unknown/release/h2_fp_plugin.wasm /etc/envoy/plugins/h2_fp.wasm
 

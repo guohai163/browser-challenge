@@ -40,9 +40,16 @@ public class TlsClassifierService {
 
         // 可选指纹头，通常由反向代理/WAF 注入。
         String ja3 = firstNonBlank(
+                header(request, "X-JA3-NORMALIZED-MD5"),
                 header(request, "X-JA3"),
                 header(request, "JA3"),
                 header(request, "X-TLS-JA3"));
+        String ja3Raw = firstNonBlank(
+                header(request, "X-JA3-RAW"),
+                header(request, "X-TLS-JA3-RAW"));
+        String ja3Normalized = firstNonBlank(
+                header(request, "X-JA3-NORMALIZED"),
+                header(request, "X-TLS-JA3-NORMALIZED"));
         String ja4 = firstNonBlank(
                 header(request, "X-JA4"),
                 header(request, "JA4"),
@@ -113,7 +120,12 @@ public class TlsClassifierService {
         scoreBreakdown.put("header", Map.of("browser", browserHeaderScore, "program", programHeaderScore));
         scoreBreakdown.put("total", Map.of("browser", browserScore, "program", programScore));
         result.put("scoreBreakdown", scoreBreakdown);
-        result.put("fingerprints", Map.of("ja3", ja3, "ja4", ja4, "h2", h2Fp));
+        result.put("fingerprints", Map.of(
+                "ja3", ja3,
+                "ja3Raw", ja3Raw,
+                "ja3Normalized", ja3Normalized,
+                "ja4", ja4,
+                "h2", h2Fp));
 
         Map<String, Object> h2Details = new HashMap<>();
         h2Details.put("settings", h2Settings);

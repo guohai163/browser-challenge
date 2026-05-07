@@ -71,6 +71,9 @@ static_resources:
                           protocol: "%PROTOCOL%"
                           upstream_cluster: "%UPSTREAM_CLUSTER%"
                           ja3: "%REQ(X-JA3)%"
+                          ja3_raw: "%REQ(X-JA3-RAW)%"
+                          ja3_normalized: "%REQ(X-JA3-NORMALIZED)%"
+                          ja3_md5_normalized: "%REQ(X-JA3-NORMALIZED-MD5)%"
                           ja4: "%REQ(X-JA4)%"
                           h2_fp: "%REQ(X-H2-FP)%"
                           h2_settings: "%REQ(X-H2-SETTINGS)%"
@@ -94,6 +97,10 @@ static_resources:
                       request_headers_to_add:
                         - header:
                             key: X-JA3
+                            value: "%TLS_JA3_FINGERPRINT%"
+                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                        - header:
+                            key: X-JA3-NORMALIZED-MD5
                             value: "%TLS_JA3_FINGERPRINT%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                         - header:

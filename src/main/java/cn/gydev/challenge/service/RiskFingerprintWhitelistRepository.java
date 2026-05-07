@@ -18,18 +18,28 @@ public class RiskFingerprintWhitelistRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public void upsert(String browserFamily, int majorVersion, String ja3, String ja4, String h2, String source) {
-        Long existingId = findId(browserFamily, majorVersion, ja3, ja4, h2);
+    public void upsert(
+            String browserFamily,
+            int majorVersion,
+            String ja3,
+            String ja3RawNormalized,
+            String ja3Md5Normalized,
+            String ja4,
+            String h2,
+            String source) {
+        Long existingId = findId(browserFamily, majorVersion, ja3Md5Normalized, ja4, h2);
         if (existingId == null) {
             jdbcTemplate.update(
                     """
                     INSERT INTO risk_fingerprint_whitelist
-                    (browser_family, major_version, ja3, ja4, h2, enabled, source, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, TRUE, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    (browser_family, major_version, ja3, ja3_raw_normalized, ja3_md5_normalized, ja4, h2, enabled, source, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     """,
                     browserFamily,
                     majorVersion,
                     ja3,
+                    ja3RawNormalized,
+                    ja3Md5Normalized,
                     ja4,
                     h2,
                     source
@@ -50,7 +60,7 @@ public class RiskFingerprintWhitelistRepository {
         );
     }
 
-    public boolean isWhitelisted(String browserFamily, int majorVersion, String ja3, String ja4, String h2) {
+    public boolean isWhitelisted(String browserFamily, int majorVersion, String ja3Md5Normalized, String ja4, String h2) {
         Integer count = jdbcTemplate.queryForObject(
                 """
                 SELECT COUNT(1)
@@ -58,14 +68,14 @@ public class RiskFingerprintWhitelistRepository {
                 WHERE enabled = TRUE
                   AND browser_family = ?
                   AND major_version = ?
-                  AND ja3 = ?
+                  AND ja3_md5_normalized = ?
                   AND ja4 = ?
                   AND h2 = ?
                 """,
                 Integer.class,
                 browserFamily,
                 majorVersion,
-                ja3,
+                ja3Md5Normalized,
                 ja4,
                 h2
         );
@@ -75,7 +85,7 @@ public class RiskFingerprintWhitelistRepository {
     public List<Record> listEnabled() {
         return jdbcTemplate.query(
                 """
-                SELECT id, browser_family, major_version, ja3, ja4, h2, source, created_at, updated_at
+                SELECT id, browser_family, major_version, ja3, ja3_raw_normalized, ja3_md5_normalized, ja4, h2, source, created_at, updated_at
                 FROM risk_fingerprint_whitelist
                 WHERE enabled = TRUE
                 ORDER BY browser_family, major_version, id
@@ -84,14 +94,14 @@ public class RiskFingerprintWhitelistRepository {
         );
     }
 
-    private Long findId(String browserFamily, int majorVersion, String ja3, String ja4, String h2) {
+    private Long findId(String browserFamily, int majorVersion, String ja3Md5Normalized, String ja4, String h2) {
         List<Long> ids = jdbcTemplate.query(
                 """
                 SELECT id
                 FROM risk_fingerprint_whitelist
                 WHERE browser_family = ?
                   AND major_version = ?
-                  AND ja3 = ?
+                  AND ja3_md5_normalized = ?
                   AND ja4 = ?
                   AND h2 = ?
                 LIMIT 1
@@ -99,7 +109,7 @@ public class RiskFingerprintWhitelistRepository {
                 (rs, rowNum) -> rs.getLong("id"),
                 browserFamily,
                 majorVersion,
-                ja3,
+                ja3Md5Normalized,
                 ja4,
                 h2
         );
@@ -112,6 +122,8 @@ public class RiskFingerprintWhitelistRepository {
                 rs.getString("browser_family"),
                 rs.getInt("major_version"),
                 rs.getString("ja3"),
+                rs.getString("ja3_raw_normalized"),
+                rs.getString("ja3_md5_normalized"),
                 rs.getString("ja4"),
                 rs.getString("h2"),
                 rs.getString("source"),
@@ -125,6 +137,8 @@ public class RiskFingerprintWhitelistRepository {
             String browserFamily,
             int majorVersion,
             String ja3,
+            String ja3RawNormalized,
+            String ja3Md5Normalized,
             String ja4,
             String h2,
             String source,

@@ -32,7 +32,8 @@ class TlsClassifierServiceTest {
         request.addHeader("Sec-Fetch-Site", "none");
         request.addHeader("Accept-Language", "en-US,en;q=0.9");
         request.addHeader("X-H2-FP", "chrome-v1");
-        request.addHeader("X-JA3", "ja3-browser");
+        request.addHeader("X-JA3", "ja3-browser-legacy");
+        request.addHeader("X-JA3-NORMALIZED-MD5", "ja3-browser");
         request.addHeader("X-JA4", "ja4-browser");
 
         Map<String, Object> result = service.classify(request);
@@ -47,7 +48,8 @@ class TlsClassifierServiceTest {
         request.addHeader("User-Agent", "Mozilla/5.0 Chrome/126.0");
         request.addHeader("Sec-CH-UA", "\"Google Chrome\";v=\"126\"");
         request.addHeader("X-H2-FP", "curl-h2");
-        request.addHeader("X-JA3", "ja3-program");
+        request.addHeader("X-JA3", "ja3-program-legacy");
+        request.addHeader("X-JA3-NORMALIZED-MD5", "ja3-program");
         request.addHeader("X-JA4", "ja4-program");
 
         Map<String, Object> result = service.classify(request);
@@ -78,7 +80,8 @@ class TlsClassifierServiceTest {
         request.addHeader("Sec-Fetch-Site", "same-origin");
         request.addHeader("Accept-Language", "en-US");
         request.addHeader("X-H2-FP", "curl-h2");
-        request.addHeader("X-JA3", "ja3-program");
+        request.addHeader("X-JA3", "ja3-program-legacy");
+        request.addHeader("X-JA3-NORMALIZED-MD5", "ja3-program");
         request.addHeader("X-JA4", "ja4-program");
 
         Map<String, Object> result = service.classify(request);

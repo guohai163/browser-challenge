@@ -23,7 +23,10 @@ class TlsControllerTest {
         request.addHeader("X-H2-SETTINGS", "settings-a");
         request.addHeader("X-H2-WINDOW", "65535");
         request.addHeader("X-H2-PRIORITY", "p1");
-        request.addHeader("X-JA3", "ja3-browser");
+        request.addHeader("X-JA3", "ja3-browser-legacy");
+        request.addHeader("X-JA3-RAW", "771,4865-4866,0-11-10,29-23,0");
+        request.addHeader("X-JA3-NORMALIZED", "771,4866,11-10,29-23,0");
+        request.addHeader("X-JA3-NORMALIZED-MD5", "ja3-browser");
 
         Map<String, Object> result = controller.tls(request);
         @SuppressWarnings("unchecked")
@@ -45,6 +48,9 @@ class TlsControllerTest {
         assertThat(scoreBreakdown).containsKey("tls");
         assertThat(scoreBreakdown).containsKey("header");
         assertThat(scoreBreakdown).containsKey("total");
+        assertThat(fingerprints.get("ja3")).isEqualTo("ja3-browser");
+        assertThat(fingerprints.get("ja3Raw")).isEqualTo("771,4865-4866,0-11-10,29-23,0");
+        assertThat(fingerprints.get("ja3Normalized")).isEqualTo("771,4866,11-10,29-23,0");
         assertThat(fingerprints.get("h2")).isEqualTo("chrome-v1");
         assertThat(h2Details.get("settings")).isEqualTo("settings-a");
     }

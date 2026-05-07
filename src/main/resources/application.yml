@@ -11,8 +11,8 @@ server:
   port: 8080
 
 app:
-  version: v0.1.39
-  published-at: 2026-05-07T10:18:07+08:00
+  version: v0.1.40
+  published-at: 2026-05-07T11:01:26+08:00
 
 risk:
   gate:
