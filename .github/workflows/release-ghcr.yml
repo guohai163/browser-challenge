@@ -40,7 +40,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./script/Dockerfile.envoy
+          file: ./script/Dockerfile.envoy.patched
           push: true
           tags: |
             ghcr.io/${{ github.repository }}-envoy:${{ github.ref_name }}
