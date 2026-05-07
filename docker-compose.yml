@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: gydev
       POSTGRES_PASSWORD: gydev
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata-browser:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:

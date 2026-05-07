@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.1.37 - 2026-05-07
+
+### Added
+- Added standalone whitelist operation page `white.html` for real browser workflows:
+  - capture current browser fingerprint into DB whitelist (`POST /api/gydev/whitelist/capture`)
+  - test current request against strong-signal gate (`GET /api/gydev/whitelist/test`)
+  - list DB whitelist records (`GET /api/gydev/whitelist/list`)
+
+### Changed
+- Updated Docker Compose PostgreSQL data volume name from `pgdata` to `pgdata-browser`.
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+- Updated Maven project version in `pom.xml` to `0.1.37`.
+
 ## v0.1.36 - 2026-05-07
 
 ### Added

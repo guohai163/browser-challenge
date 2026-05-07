@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gydev Whitelist Console</title>
+    <style>
+        body { font-family: "Segoe UI", sans-serif; margin: 24px; background: #f4f7fb; color: #0f172a; }
+        .card { max-width: 1040px; margin: 0 auto; background: #fff; border: 1px solid #dbe2ea; border-radius: 12px; padding: 20px; }
+        .banner {
+            background: linear-gradient(135deg, #0f766e, #0ea5e9);
+            color: #fff;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        .banner .title { font-size: 14px; opacity: 0.9; }
+        .banner .value { font-size: 18px; }
+        .row { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 14px; }
+        button { border: none; padding: 10px 14px; border-radius: 8px; background: #0f766e; color: #fff; cursor: pointer; }
+        button.alt { background: #2563eb; }
+        button.warn { background: #b45309; }
+        button.danger { background: #b91c1c; }
+        pre { background: #0b1220; color: #dbe7ff; border-radius: 10px; padding: 12px; max-height: 460px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+        .status { display: inline-block; padding: 6px 10px; border-radius: 999px; font-weight: 600; margin-bottom: 10px; }
+        .ok { background: #e8f8ef; color: #047857; border: 1px solid #86efac; }
+        .fail { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+        .hint { font-size: 13px; color: #475569; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div id="metaBanner" class="banner">
+        <div class="title">白名单采集控制台</div>
+        <div class="value">版本：加载中...</div>
+    </div>
+
+    <h2>Gydev 白名单测试页面</h2>
+    <div class="hint">用于真实浏览器采集指纹、门槛验证、查看数据库白名单。</div>
+
+    <div class="row">
+        <button id="btnCapture">采集白名单（POST /capture）</button>
+        <button id="btnTest" class="alt">测试门槛（GET /test）</button>
+        <button id="btnList" class="warn">查看白名单（GET /list）</button>
+        <button id="btnClear" class="danger">清空输出</button>
+    </div>
+
+    <div id="status"></div>
+    <pre id="output"></pre>
+</div>
+
+<script>
+    const statusEl = document.getElementById("status");
+    const outputEl = document.getElementById("output");
+    const metaBannerEl = document.getElementById("metaBanner");
+
+    function print(obj) {
+        outputEl.textContent = JSON.stringify(obj, null, 2);
+    }
+
+    function setStatus(ok, text) {
+        const cls = ok ? "ok" : "fail";
+        statusEl.innerHTML = `<span class="status ${cls}">${text}</span>`;
+    }
+
+    function formatLocalTime(input) {
+        if (!input) return "unknown";
+        const dt = new Date(input);
+        if (Number.isNaN(dt.getTime())) return input;
+        return dt.toLocaleString(undefined, { hour12: false });
+    }
+
+    async function loadMeta() {
+        try {
+            const res = await fetch("/api/meta");
+            if (!res.ok) throw new Error("load meta failed");
+            const data = await res.json();
+            metaBannerEl.innerHTML =
+                `<div class="title">白名单采集控制台</div>` +
+                `<div class="value">版本：${data.version || "unknown"} ｜ 发布时间：${formatLocalTime(data.publishedAt)}</div>`;
+        } catch (e) {
+            metaBannerEl.innerHTML =
+                `<div class="title">白名单采集控制台</div>` +
+                `<div class="value">版本：unknown ｜ 发布时间：unknown</div>`;
+        }
+    }
+
+    async function capture() {
+        const res = await fetch("/api/gydev/whitelist/capture", { method: "POST" });
+        const data = await res.json();
+        setStatus(Boolean(data.captured), data.captured ? "采集成功并已入库" : "采集失败");
+        print({ action: "capture", response: data });
+    }
+
+    async function testGate() {
+        const res = await fetch("/api/gydev/whitelist/test");
+        const data = await res.json();
+        const passed = Boolean(data?.gate?.gatePassed);
+        setStatus(passed, passed ? "门槛验证通过" : "门槛验证未通过");
+        print({ action: "test", response: data });
+    }
+
+    async function listWhitelist() {
+        const res = await fetch("/api/gydev/whitelist/list");
+        const data = await res.json();
+        setStatus(true, `当前白名单记录数：${Array.isArray(data) ? data.length : 0}`);
+        print({ action: "list", records: data });
+    }
+
+    document.getElementById("btnCapture").addEventListener("click", async () => {
+        try {
+            await capture();
+        } catch (e) {
+            setStatus(false, "采集调用失败");
+            print({ action: "capture", error: e.message });
+        }
+    });
+
+    document.getElementById("btnTest").addEventListener("click", async () => {
+        try {
+            await testGate();
+        } catch (e) {
+            setStatus(false, "测试调用失败");
+            print({ action: "test", error: e.message });
+        }
+    });
+
+    document.getElementById("btnList").addEventListener("click", async () => {
+        try {
+            await listWhitelist();
+        } catch (e) {
+            setStatus(false, "列表调用失败");
+            print({ action: "list", error: e.message });
+        }
+    });
+
+    document.getElementById("btnClear").addEventListener("click", () => {
+        statusEl.innerHTML = "";
+        outputEl.textContent = "";
+    });
+
+    loadMeta();
+</script>
+</body>
+</html>
