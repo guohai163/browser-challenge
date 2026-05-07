@@ -49,3 +49,30 @@ Typical set includes: 0x0a0a, 0x1a1a, ..., 0xfafa.
 
 3. Header/log/app consistency:
 - `X-JA3-NORMALIZED-MD5` equals access-log value equals backend received value.
+
+## This repo implementation status
+
+Implemented in local Envoy source tree:
+
+- `source/extensions/filters/listener/tls_inspector/tls_inspector.cc`
+  - build `ja3_raw` (without GREASE filtering)
+  - build `ja3_normalized` (GREASE filtered)
+  - MD5 of normalized string as `ja3_md5_normalized`
+  - write metadata under namespace `envoy.filters.listener.tls_inspector`
+
+- `source/common/formatter/stream_info_formatter.cc`
+  - new formatters:
+    - `%TLS_JA3_RAW%`
+    - `%TLS_JA3_NORMALIZED%`
+    - `%TLS_JA3_NORMALIZED_MD5%`
+
+Envoy config is wired to inject:
+
+- `X-JA3-RAW: %TLS_JA3_RAW%`
+- `X-JA3-NORMALIZED: %TLS_JA3_NORMALIZED%`
+- `X-JA3-NORMALIZED-MD5: %TLS_JA3_NORMALIZED_MD5%`
+
+Build helper:
+
+- `script/Dockerfile.envoy.patched`
+- `script/build-envoy-patched.sh`

@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.1.41 - 2026-05-07
+
+### Added
+- Added local Envoy source patch file for listener-level JA3 raw extraction and normalized hash export: `script/envoy-patch/envoy-ja3-raw.patch`.
+- Added patched Envoy image build assets:
+  - `script/Dockerfile.envoy.patched`
+  - `script/build-envoy-patched.sh`
+
+### Changed
+- Updated `script/envoy.yml` to inject and log JA3 raw/normalized/normalized-md5 headers and formatter fields.
+- Updated patch documentation in `script/envoy-patch/README.md` to reflect implemented `ja3_raw` wiring status and build path.
+- Updated `docker-compose.yml` to reference patched Envoy image tag `ghcr.io/guohai163/browser-challenge-envoy:ja3raw`.
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+- Updated Maven project version in `pom.xml` to `0.1.41`.
+
 ## v0.1.40 - 2026-05-07
 
 ### Added

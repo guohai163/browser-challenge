@@ -1,0 +1,31 @@
+FROM ubuntu:22.04 AS envoy-build
+WORKDIR /src/envoy
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl git python3 python3-pip build-essential pkg-config unzip zip \
+    openjdk-17-jre-headless cmake ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install bazelisk
+RUN curl -L -o /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.24.1/bazelisk-linux-amd64 \
+    && chmod +x /usr/local/bin/bazel
+
+COPY third_party/envoy/ /src/envoy/
+
+# Build envoy binary with local patches
+RUN bazel build -c opt //source/exe:envoy-static
+
+FROM rust:1.78-bookworm AS wasm-build
+WORKDIR /src
+COPY script/h2-fp-plugin ./script/h2-fp-plugin
+RUN rustup target add wasm32-unknown-unknown
+RUN cargo build --manifest-path ./script/h2-fp-plugin/Cargo.toml --target wasm32-unknown-unknown --release
+
+FROM ubuntu:22.04
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=envoy-build /src/envoy/bazel-bin/source/exe/envoy-static /usr/local/bin/envoy
+COPY script/envoy.yml /etc/envoy/envoy.yml
+COPY --from=wasm-build /src/script/h2-fp-plugin/target/wasm32-unknown-unknown/release/h2_fp_plugin.wasm /etc/envoy/plugins/h2_fp.wasm
+
+EXPOSE 443 9901
+CMD ["envoy", "-c", "/etc/envoy/envoy.yml", "--log-level", "info"]

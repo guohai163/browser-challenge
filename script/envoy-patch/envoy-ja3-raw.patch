@@ -1,0 +1,229 @@
+diff --git a/source/common/formatter/stream_info_formatter.cc b/source/common/formatter/stream_info_formatter.cc
+index 4d22be1567..cac5e81dd1 100644
+--- a/source/common/formatter/stream_info_formatter.cc
++++ b/source/common/formatter/stream_info_formatter.cc
+@@ -2384,6 +2384,29 @@ const StreamInfoFormatterProviderLookupTable& getKnownStreamInfoFormatterProvide
+                                        return result;
+                                      });
+                                }}},
++                             {"TLS_JA3_RAW",
++                              {CommandSyntaxChecker::COMMAND_ONLY,
++                               [](absl::string_view, absl::optional<size_t>) {
++                                 return std::make_unique<DynamicMetadataFormatter>(
++                                     "envoy.filters.listener.tls_inspector",
++                                     std::vector<absl::string_view>{"ja3_raw"}, absl::nullopt);
++                               }}},
++                             {"TLS_JA3_NORMALIZED",
++                              {CommandSyntaxChecker::COMMAND_ONLY,
++                               [](absl::string_view, absl::optional<size_t>) {
++                                 return std::make_unique<DynamicMetadataFormatter>(
++                                     "envoy.filters.listener.tls_inspector",
++                                     std::vector<absl::string_view>{"ja3_normalized"},
++                                     absl::nullopt);
++                               }}},
++                             {"TLS_JA3_NORMALIZED_MD5",
++                              {CommandSyntaxChecker::COMMAND_ONLY,
++                               [](absl::string_view, absl::optional<size_t>) {
++                                 return std::make_unique<DynamicMetadataFormatter>(
++                                     "envoy.filters.listener.tls_inspector",
++                                     std::vector<absl::string_view>{"ja3_md5_normalized"},
++                                     absl::nullopt);
++                               }}},
+                              {"UNIQUE_ID",
+                               {CommandSyntaxChecker::COMMAND_ONLY,
+                                [](absl::string_view, const absl::optional<size_t>&) {
+diff --git a/source/extensions/filters/listener/tls_inspector/tls_inspector.cc b/source/extensions/filters/listener/tls_inspector/tls_inspector.cc
+index df15855cb5..7184664d28 100644
+--- a/source/extensions/filters/listener/tls_inspector/tls_inspector.cc
++++ b/source/extensions/filters/listener/tls_inspector/tls_inspector.cc
+@@ -292,6 +292,25 @@ void writeCipherSuites(const SSL_CLIENT_HELLO* ssl_client_hello, std::string& fi
+   }
+ }
+ 
++void writeCipherSuitesRaw(const SSL_CLIENT_HELLO* ssl_client_hello, std::string& fingerprint) {
++  CBS cipher_suites;
++  CBS_init(&cipher_suites, ssl_client_hello->cipher_suites, ssl_client_hello->cipher_suites_len);
++
++  bool write_cipher = true;
++  bool first = true;
++  while (write_cipher && CBS_len(&cipher_suites) > 0) {
++    uint16_t id;
++    write_cipher = CBS_get_u16(&cipher_suites, &id);
++    if (write_cipher) {
++      if (!first) {
++        absl::StrAppend(&fingerprint, "-");
++      }
++      absl::StrAppendFormat(&fingerprint, "%d", id);
++      first = false;
++    }
++  }
++}
++
+ void writeExtensions(const SSL_CLIENT_HELLO* ssl_client_hello, std::string& fingerprint) {
+   CBS extensions;
+   CBS_init(&extensions, ssl_client_hello->extensions, ssl_client_hello->extensions_len);
+@@ -314,6 +333,28 @@ void writeExtensions(const SSL_CLIENT_HELLO* ssl_client_hello, std::string& fing
+   }
+ }
+ 
++void writeExtensionsRaw(const SSL_CLIENT_HELLO* ssl_client_hello, std::string& fingerprint) {
++  CBS extensions;
++  CBS_init(&extensions, ssl_client_hello->extensions, ssl_client_hello->extensions_len);
++
++  bool write_extension = true;
++  bool first = true;
++  while (write_extension && CBS_len(&extensions) > 0) {
++    uint16_t id;
++    CBS extension;
++
++    write_extension =
++        (CBS_get_u16(&extensions, &id) && CBS_get_u16_length_prefixed(&extensions, &extension));
++    if (write_extension) {
++      if (!first) {
++        absl::StrAppend(&fingerprint, "-");
++      }
++      absl::StrAppendFormat(&fingerprint, "%d", id);
++      first = false;
++    }
++  }
++}
++
+ void writeEllipticCurves(const SSL_CLIENT_HELLO* ssl_client_hello, std::string& fingerprint) {
+   const uint8_t* ec_data;
+   size_t ec_len;
+@@ -326,6 +367,31 @@ void writeEllipticCurves(const SSL_CLIENT_HELLO* ssl_client_hello, std::string&
+     uint16_t id;
+     bool write_elliptic_curve = CBS_get_u16(&ec, &id);
+ 
++    bool first = true;
++    while (write_elliptic_curve && CBS_len(&ec) > 0) {
++      write_elliptic_curve = CBS_get_u16(&ec, &id);
++      if (write_elliptic_curve && JA4Fingerprinter::isNotGrease(id)) {
++        if (!first) {
++          absl::StrAppend(&fingerprint, "-");
++        }
++        absl::StrAppendFormat(&fingerprint, "%d", id);
++        first = false;
++      }
++    }
++  }
++}
++
++void writeEllipticCurvesRaw(const SSL_CLIENT_HELLO* ssl_client_hello, std::string& fingerprint) {
++  const uint8_t* ec_data;
++  size_t ec_len;
++  if (SSL_early_callback_ctx_extension_get(ssl_client_hello, TLSEXT_TYPE_supported_groups, &ec_data,
++                                           &ec_len)) {
++    CBS ec;
++    CBS_init(&ec, ec_data, ec_len);
++
++    uint16_t id;
++    bool write_elliptic_curve = CBS_get_u16(&ec, &id);
++
+     bool first = true;
+     while (write_elliptic_curve && CBS_len(&ec) > 0) {
+       write_elliptic_curve = CBS_get_u16(&ec, &id);
+@@ -369,28 +435,49 @@ void writeEllipticCurvePointFormats(const SSL_CLIENT_HELLO* ssl_client_hello,
+ 
+ void Filter::createJA3Hash(const SSL_CLIENT_HELLO* ssl_client_hello) {
+   if (config_->enableJA3Fingerprinting()) {
+-    std::string fingerprint;
++    std::string fingerprint_raw;
++    std::string fingerprint_normalized;
+     const uint16_t client_version = ssl_client_hello->version;
+-    absl::StrAppendFormat(&fingerprint, "%d,", client_version);
+-    writeCipherSuites(ssl_client_hello, fingerprint);
+-    absl::StrAppend(&fingerprint, ",");
+-    writeExtensions(ssl_client_hello, fingerprint);
+-    absl::StrAppend(&fingerprint, ",");
+-    writeEllipticCurves(ssl_client_hello, fingerprint);
+-    absl::StrAppend(&fingerprint, ",");
+-    writeEllipticCurvePointFormats(ssl_client_hello, fingerprint);
+-
+-    ENVOY_LOG(trace, "tls:createJA3Hash(), fingerprint: {}", fingerprint);
++    absl::StrAppendFormat(&fingerprint_raw, "%d,", client_version);
++    absl::StrAppendFormat(&fingerprint_normalized, "%d,", client_version);
++    writeCipherSuitesRaw(ssl_client_hello, fingerprint_raw);
++    writeCipherSuites(ssl_client_hello, fingerprint_normalized);
++    absl::StrAppend(&fingerprint_raw, ",");
++    absl::StrAppend(&fingerprint_normalized, ",");
++    writeExtensionsRaw(ssl_client_hello, fingerprint_raw);
++    writeExtensions(ssl_client_hello, fingerprint_normalized);
++    absl::StrAppend(&fingerprint_raw, ",");
++    absl::StrAppend(&fingerprint_normalized, ",");
++    writeEllipticCurvesRaw(ssl_client_hello, fingerprint_raw);
++    writeEllipticCurves(ssl_client_hello, fingerprint_normalized);
++    absl::StrAppend(&fingerprint_raw, ",");
++    absl::StrAppend(&fingerprint_normalized, ",");
++    writeEllipticCurvePointFormats(ssl_client_hello, fingerprint_raw);
++    writeEllipticCurvePointFormats(ssl_client_hello, fingerprint_normalized);
++
++    ENVOY_LOG(trace, "tls:createJA3Hash(), raw: {}", fingerprint_raw);
++    ENVOY_LOG(trace, "tls:createJA3Hash(), normalized: {}", fingerprint_normalized);
+ 
+     uint8_t buf[MD5_DIGEST_LENGTH];
+-    MD5(reinterpret_cast<const uint8_t*>(fingerprint.data()), fingerprint.size(), buf);
++    MD5(reinterpret_cast<const uint8_t*>(fingerprint_normalized.data()), fingerprint_normalized.size(), buf);
+     std::string md5 = Envoy::Hex::encode(buf, MD5_DIGEST_LENGTH);
+     ENVOY_LOG(trace, "tls:createJA3Hash(), hash: {}", md5);
+ 
+     cb_->socket().setJA3Hash(md5);
++    setJA3DynamicMetadata(fingerprint_raw, fingerprint_normalized, md5);
+   }
+ }
+ 
++void Filter::setJA3DynamicMetadata(absl::string_view ja3_raw, absl::string_view ja3_normalized,
++                                   absl::string_view ja3_normalized_md5) {
++  Protobuf::Struct metadata;
++  auto& fields = *metadata.mutable_fields();
++  fields[ja3RawKey()].set_string_value(std::string(ja3_raw));
++  fields[ja3NormalizedKey()].set_string_value(std::string(ja3_normalized));
++  fields[ja3NormalizedMd5Key()].set_string_value(std::string(ja3_normalized_md5));
++  cb_->setDynamicMetadata(dynamicMetadataKey(), metadata);
++}
++
+ void Filter::createJA4Hash(const SSL_CLIENT_HELLO* ssl_client_hello) {
+   if (!config_->enableJA4Fingerprinting()) {
+     return;
+@@ -409,6 +496,18 @@ const std::string& Filter::failureReasonKey() {
+   CONSTRUCT_ON_FIRST_USE(std::string, "failure_reason");
+ }
+ 
++const std::string& Filter::ja3RawKey() {
++  CONSTRUCT_ON_FIRST_USE(std::string, "ja3_raw");
++}
++
++const std::string& Filter::ja3NormalizedKey() {
++  CONSTRUCT_ON_FIRST_USE(std::string, "ja3_normalized");
++}
++
++const std::string& Filter::ja3NormalizedMd5Key() {
++  CONSTRUCT_ON_FIRST_USE(std::string, "ja3_md5_normalized");
++}
++
+ const std::string& Filter::failureReasonClientHelloTooLarge() {
+   CONSTRUCT_ON_FIRST_USE(std::string, "ClientHelloTooLarge");
+ }
+diff --git a/source/extensions/filters/listener/tls_inspector/tls_inspector.h b/source/extensions/filters/listener/tls_inspector/tls_inspector.h
+index e969e2f268..27afa06d27 100644
+--- a/source/extensions/filters/listener/tls_inspector/tls_inspector.h
++++ b/source/extensions/filters/listener/tls_inspector/tls_inspector.h
+@@ -99,6 +99,9 @@ public:
+ 
+   static const std::string& dynamicMetadataKey();
+   static const std::string& failureReasonKey();
++  static const std::string& ja3RawKey();
++  static const std::string& ja3NormalizedKey();
++  static const std::string& ja3NormalizedMd5Key();
+   static const std::string& failureReasonClientHelloTooLarge();
+   static const std::string& failureReasonClientHelloNotDetected();
+ 
+@@ -109,6 +112,8 @@ private:
+   void onServername(absl::string_view name);
+   void createJA3Hash(const SSL_CLIENT_HELLO* ssl_client_hello);
+   void createJA4Hash(const SSL_CLIENT_HELLO* ssl_client_hello);
++  void setJA3DynamicMetadata(absl::string_view ja3_raw, absl::string_view ja3_normalized,
++                             absl::string_view ja3_normalized_md5);
+   uint32_t maxConfigReadBytes() const { return config_->maxClientHelloSize(); }
+   ParseState getParserState(int handshake_status);
+   void setDynamicMetadata(absl::string_view failure_reason);

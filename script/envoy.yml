@@ -74,6 +74,9 @@ static_resources:
                           ja3_raw: "%REQ(X-JA3-RAW)%"
                           ja3_normalized: "%REQ(X-JA3-NORMALIZED)%"
                           ja3_md5_normalized: "%REQ(X-JA3-NORMALIZED-MD5)%"
+                          ja3_raw_meta: "%TLS_JA3_RAW%"
+                          ja3_normalized_meta: "%TLS_JA3_NORMALIZED%"
+                          ja3_md5_normalized_meta: "%TLS_JA3_NORMALIZED_MD5%"
                           ja4: "%REQ(X-JA4)%"
                           h2_fp: "%REQ(X-H2-FP)%"
                           h2_settings: "%REQ(X-H2-SETTINGS)%"
@@ -101,7 +104,15 @@ static_resources:
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                         - header:
                             key: X-JA3-NORMALIZED-MD5
-                            value: "%TLS_JA3_FINGERPRINT%"
+                            value: "%TLS_JA3_NORMALIZED_MD5%"
+                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                        - header:
+                            key: X-JA3-RAW
+                            value: "%TLS_JA3_RAW%"
+                          append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                        - header:
+                            key: X-JA3-NORMALIZED
+                            value: "%TLS_JA3_NORMALIZED%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                         - header:
                             key: X-JA4

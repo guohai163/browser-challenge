@@ -34,7 +34,7 @@ services:
       - "8080:8080"
     restart: unless-stopped
   envoy:
-    image: ghcr.io/guohai163/browser-challenge-envoy:latest
+    image: ghcr.io/guohai163/browser-challenge-envoy:ja3raw
     container_name: browser-challenge-envoy
     depends_on:
       spring-app:
