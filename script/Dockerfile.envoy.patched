@@ -10,7 +10,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -L -o /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.24.1/bazelisk-linux-amd64 \
     && chmod +x /usr/local/bin/bazel
 
-COPY third_party/envoy/ /src/envoy/
+ARG ENVOY_REF=v1.35.0
+RUN git clone --depth 1 --branch ${ENVOY_REF} https://github.com/envoyproxy/envoy /src/envoy
+COPY script/envoy-patch/envoy-ja3-raw.patch /tmp/envoy-ja3-raw.patch
+RUN cd /src/envoy && git apply /tmp/envoy-ja3-raw.patch
 
 # Build envoy binary with local patches
 RUN bazel build -c opt //source/exe:envoy-static
