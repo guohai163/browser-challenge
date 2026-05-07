@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.42 - 2026-05-07
+
+### Changed
+- Updated `docker-compose.yml` to pin Envoy image to a unique patched tag `ghcr.io/guohai163/browser-challenge-envoy:v0.1.42-ja3raw.1` to avoid mutable tag reuse.
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+- Updated Maven project version in `pom.xml` to `0.1.42`.
+
 ## v0.1.41 - 2026-05-07
 
 ### Added
