@@ -1,4 +1,4 @@
-FROM envoyproxy/envoy-build-ubuntu:latest AS envoy-build
+FROM envoyproxy/envoy-build-ubuntu@sha256:1b3c82ca34c505c4951918b2e0a0c3db88cf266ebbf4196e4b0fba8fa137ada3 AS envoy-build
 WORKDIR /src/envoy
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git && rm -rf /var/lib/apt/lists/*
