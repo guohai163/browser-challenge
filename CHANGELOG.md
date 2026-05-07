@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.39 - 2026-05-07
+
+### Changed
+- Removed source-IP trust restriction from strong-signal gate verification path used by protected GET/POST submission endpoints.
+- `submit-get` and `submit-post` gate failures no longer include `untrusted_fingerprint_source`; gate decisions now depend on fingerprint completeness/whitelist/circuit checks.
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+- Updated Maven project version in `pom.xml` to `0.1.39`.
+
 ## v0.1.38 - 2026-05-07
 
 ### Changed

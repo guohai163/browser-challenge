@@ -49,11 +49,6 @@ public class RiskSignalGateService {
             return gateResult(false, failures, "heavy");
         }
 
-        boolean trustedSource = isTrustedProxySource(sourceIp);
-        if (!trustedSource) {
-            failures.add("untrusted_fingerprint_source");
-        }
-
         if (!isValidFingerprintValue(ja3) || !isValidFingerprintValue(ja4) || !isValidFingerprintValue(h2)) {
             failures.add("missing_tls_fingerprint");
         }
@@ -170,14 +165,6 @@ public class RiskSignalGateService {
         if (ja3 != null && !ja3.isBlank()) {
             blockedUntil.put("ja3:" + ja3, until);
         }
-    }
-
-    private boolean isTrustedProxySource(String sourceIp) {
-        List<String> trusted = properties.getTrustedProxyIps();
-        if (trusted == null || trusted.isEmpty()) {
-            return false;
-        }
-        return trusted.stream().anyMatch(ip -> ip != null && ip.trim().equals(sourceIp));
     }
 
     private boolean isWhitelisted(BrowserIdentity identity, String ja3, String ja4, String h2) {
