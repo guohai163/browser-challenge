@@ -82,9 +82,6 @@ public class RiskSignalGateService {
         BrowserIdentity identity = parseBrowserIdentity(header(request, "User-Agent"));
 
         List<String> failures = new ArrayList<>();
-        if (!isTrustedProxySource(remoteIp(request))) {
-            failures.add("untrusted_fingerprint_source");
-        }
         if (!isValidFingerprintValue(ja3) || !isValidFingerprintValue(ja4) || !isValidFingerprintValue(h2)) {
             failures.add("missing_tls_fingerprint");
         }

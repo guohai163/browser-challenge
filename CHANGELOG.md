@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.38 - 2026-05-07
+
+### Changed
+- Removed source-IP trust restriction for whitelist capture API. `POST /api/gydev/whitelist/capture` now allows fingerprint capture from any request source.
+- Kept strong-signal gate source trust enforcement unchanged for normal protected traffic verification.
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+- Updated Maven project version in `pom.xml` to `0.1.38`.
+
 ## v0.1.37 - 2026-05-07
 
 ### Added
