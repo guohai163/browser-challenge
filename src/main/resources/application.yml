@@ -17,6 +17,7 @@ app:
 risk:
   gate:
     enabled: true
+    require-ja3: ${RISK_GATE_REQUIRE_JA3:true}
     trusted-proxy-ips:
       - 127.0.0.1
       - 0:0:0:0:0:0:0:1

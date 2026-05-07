@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 public class RiskGateProperties {
 
     private boolean enabled = true;
+    private boolean requireJa3 = true;
     private List<String> trustedProxyIps = new ArrayList<>();
     private List<FingerprintWhitelistEntry> whitelist = new ArrayList<>();
     private CircuitBreaker circuit = new CircuitBreaker();
@@ -23,6 +24,14 @@ public class RiskGateProperties {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public boolean isRequireJa3() {
+        return requireJa3;
+    }
+
+    public void setRequireJa3(boolean requireJa3) {
+        this.requireJa3 = requireJa3;
     }
 
     public List<String> getTrustedProxyIps() {

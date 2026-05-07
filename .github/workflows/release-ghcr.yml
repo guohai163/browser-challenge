@@ -35,13 +35,3 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.ref_name }}
             ghcr.io/${{ github.repository }}:latest
-
-      - name: Build and push envoy image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./script/Dockerfile.envoy.patched
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}-envoy:${{ github.ref_name }}
-            ghcr.io/${{ github.repository }}-envoy:latest

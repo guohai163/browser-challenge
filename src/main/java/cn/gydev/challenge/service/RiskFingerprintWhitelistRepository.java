@@ -26,8 +26,11 @@ public class RiskFingerprintWhitelistRepository {
             String ja3Md5Normalized,
             String ja4,
             String h2,
-            String source) {
-        Long existingId = findId(browserFamily, majorVersion, ja3Md5Normalized, ja4, h2);
+            String source,
+            boolean requireJa3) {
+        Long existingId = requireJa3
+                ? findId(browserFamily, majorVersion, ja3Md5Normalized, ja4, h2)
+                : findIdWithoutJa3(browserFamily, majorVersion, ja4, h2);
         if (existingId == null) {
             jdbcTemplate.update(
                     """
@@ -82,6 +85,26 @@ public class RiskFingerprintWhitelistRepository {
         return count != null && count > 0;
     }
 
+    public boolean isWhitelistedWithoutJa3(String browserFamily, int majorVersion, String ja4, String h2) {
+        Integer count = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(1)
+                FROM risk_fingerprint_whitelist
+                WHERE enabled = TRUE
+                  AND browser_family = ?
+                  AND major_version = ?
+                  AND ja4 = ?
+                  AND h2 = ?
+                """,
+                Integer.class,
+                browserFamily,
+                majorVersion,
+                ja4,
+                h2
+        );
+        return count != null && count > 0;
+    }
+
     public List<Record> listEnabled() {
         return jdbcTemplate.query(
                 """
@@ -110,6 +133,26 @@ public class RiskFingerprintWhitelistRepository {
                 browserFamily,
                 majorVersion,
                 ja3Md5Normalized,
+                ja4,
+                h2
+        );
+        return ids.isEmpty() ? null : ids.getFirst();
+    }
+
+    public Long findIdWithoutJa3(String browserFamily, int majorVersion, String ja4, String h2) {
+        List<Long> ids = jdbcTemplate.query(
+                """
+                SELECT id
+                FROM risk_fingerprint_whitelist
+                WHERE browser_family = ?
+                  AND major_version = ?
+                  AND ja4 = ?
+                  AND h2 = ?
+                LIMIT 1
+                """,
+                (rs, rowNum) -> rs.getLong("id"),
+                browserFamily,
+                majorVersion,
                 ja4,
                 h2
         );

@@ -40,26 +40,30 @@ public class RiskSignalGateService {
         }
 
         String sourceIp = remoteIp(request);
+        boolean requireJa3 = properties.isRequireJa3();
         String ja3 = readFingerprint(tlsClassifierResult, "ja3");
         String ja4 = readFingerprint(tlsClassifierResult, "ja4");
         String h2 = readFingerprint(tlsClassifierResult, "h2");
+        String fingerprintKey = fingerprintKey(requireJa3, ja3, ja4, h2);
 
-        if (isBlocked(sourceIp, ja3)) {
+        if (isBlocked(sourceIp, fingerprintKey)) {
             failures.add("circuit_blocked");
             return gateResult(false, failures, "heavy");
         }
 
-        if (!isValidFingerprintValue(ja3) || !isValidFingerprintValue(ja4) || !isValidFingerprintValue(h2)) {
+        if (requireJa3
+                ? (!isValidFingerprintValue(ja3) || !isValidFingerprintValue(ja4) || !isValidFingerprintValue(h2))
+                : (!isValidFingerprintValue(ja4) || !isValidFingerprintValue(h2))) {
             failures.add("missing_tls_fingerprint");
         }
 
         BrowserIdentity identity = parseBrowserIdentity(header(request, "User-Agent"));
-        if (!isWhitelisted(identity, ja3, ja4, h2)) {
+        if (!isWhitelisted(identity, requireJa3, ja3, ja4, h2)) {
             failures.add("fingerprint_not_whitelisted");
         }
 
         if (!failures.isEmpty()) {
-            String level = trackAndMaybeBlock(sourceIp, ja3, failures);
+            String level = trackAndMaybeBlock(sourceIp, fingerprintKey, failures);
             return gateResult(false, failures, level);
         }
 
@@ -77,9 +81,12 @@ public class RiskSignalGateService {
         String ja4 = readFingerprint(tlsClassifierResult, "ja4");
         String h2 = readFingerprint(tlsClassifierResult, "h2");
         BrowserIdentity identity = parseBrowserIdentity(header(request, "User-Agent"));
+        boolean requireJa3 = properties.isRequireJa3();
 
         List<String> failures = new ArrayList<>();
-        if (!isValidFingerprintValue(ja3) || !isValidFingerprintValue(ja4) || !isValidFingerprintValue(h2)) {
+        if (requireJa3
+                ? (!isValidFingerprintValue(ja3) || !isValidFingerprintValue(ja4) || !isValidFingerprintValue(h2))
+                : (!isValidFingerprintValue(ja4) || !isValidFingerprintValue(h2))) {
             failures.add("missing_tls_fingerprint");
         }
         if ("unknown".equals(identity.family()) || identity.majorVersion() <= 0) {
@@ -108,7 +115,8 @@ public class RiskSignalGateService {
                 normalized(ja3),
                 normalized(ja4),
                 normalized(h2),
-                "browser_capture"
+                "browser_capture",
+                requireJa3
         );
         out.put("whitelisted", true);
         return out;
@@ -126,14 +134,14 @@ public class RiskSignalGateService {
         return out;
     }
 
-    private boolean isBlocked(String sourceIp, String ja3) {
+    private boolean isBlocked(String sourceIp, String fingerprintKey) {
         long now = System.currentTimeMillis();
         Long ipUntil = blockedUntil.get("ip:" + sourceIp);
-        Long fpUntil = blockedUntil.get("ja3:" + ja3);
+        Long fpUntil = blockedUntil.get("fp:" + fingerprintKey);
         return (ipUntil != null && ipUntil > now) || (fpUntil != null && fpUntil > now);
     }
 
-    private String trackAndMaybeBlock(String sourceIp, String ja3, List<String> failures) {
+    private String trackAndMaybeBlock(String sourceIp, String fingerprintKey, List<String> failures) {
         Set<String> tracked = new HashSet<>(failures);
         tracked.retainAll(Set.of("pow_invalid", "pow_replay", "fingerprint_not_whitelisted"));
         if (tracked.isEmpty()) {
@@ -141,7 +149,7 @@ public class RiskSignalGateService {
         }
 
         long now = System.currentTimeMillis();
-        String key = sourceIp + "|" + (ja3 == null ? "" : ja3);
+        String key = sourceIp + "|" + fingerprintKey;
         CounterState state = counters.computeIfAbsent(key, k -> new CounterState(now, new AtomicInteger(0)));
         synchronized (state) {
             long windowMs = properties.getCircuit().getWindowMs();
@@ -154,17 +162,17 @@ public class RiskSignalGateService {
             int medium = properties.getCircuit().getMediumThreshold();
             int light = properties.getCircuit().getLightThreshold();
             if (total >= heavy) {
-                applyBlock(sourceIp, ja3, properties.getCircuit().getHeavyBlockMs());
+                applyBlock(sourceIp, fingerprintKey, properties.getCircuit().getHeavyBlockMs());
                 log.warn("risk_circuit_breaker_trigger_total level=heavy key={} failures={}", key, tracked);
                 return "heavy";
             }
             if (total >= medium) {
-                applyBlock(sourceIp, ja3, properties.getCircuit().getMediumBlockMs());
+                applyBlock(sourceIp, fingerprintKey, properties.getCircuit().getMediumBlockMs());
                 log.warn("risk_circuit_breaker_trigger_total level=medium key={} failures={}", key, tracked);
                 return "medium";
             }
             if (total >= light) {
-                applyBlock(sourceIp, ja3, properties.getCircuit().getLightBlockMs());
+                applyBlock(sourceIp, fingerprintKey, properties.getCircuit().getLightBlockMs());
                 log.warn("risk_circuit_breaker_trigger_total level=light key={} failures={}", key, tracked);
                 return "light";
             }
@@ -172,25 +180,40 @@ public class RiskSignalGateService {
         return "none";
     }
 
-    private void applyBlock(String sourceIp, String ja3, long blockMs) {
+    private void applyBlock(String sourceIp, String fingerprintKey, long blockMs) {
         long until = System.currentTimeMillis() + Math.max(0L, blockMs);
         blockedUntil.put("ip:" + sourceIp, until);
-        if (ja3 != null && !ja3.isBlank()) {
-            blockedUntil.put("ja3:" + ja3, until);
+        if (fingerprintKey != null && !fingerprintKey.isBlank()) {
+            blockedUntil.put("fp:" + fingerprintKey, until);
         }
     }
 
-    private boolean isWhitelisted(BrowserIdentity identity, String ja3, String ja4, String h2) {
+    private boolean isWhitelisted(BrowserIdentity identity, boolean requireJa3, String ja3, String ja4, String h2) {
         if (identity == null || identity.majorVersion() <= 0 || identity.family() == null || identity.family().isBlank()) {
             return false;
         }
-        return whitelistRepository.isWhitelisted(
+        if (requireJa3) {
+            return whitelistRepository.isWhitelisted(
+                    identity.family().toLowerCase(Locale.ROOT),
+                    identity.majorVersion(),
+                    normalized(ja3),
+                    normalized(ja4),
+                    normalized(h2)
+            );
+        }
+        return whitelistRepository.isWhitelistedWithoutJa3(
                 identity.family().toLowerCase(Locale.ROOT),
                 identity.majorVersion(),
-                normalized(ja3),
                 normalized(ja4),
                 normalized(h2)
         );
+    }
+
+    private String fingerprintKey(boolean requireJa3, String ja3, String ja4, String h2) {
+        if (requireJa3) {
+            return normalized(ja3);
+        }
+        return normalized(ja4) + "|" + normalized(h2);
     }
 
     private BrowserIdentity parseBrowserIdentity(String userAgent) {
