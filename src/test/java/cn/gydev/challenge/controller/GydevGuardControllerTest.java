@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import cn.gydev.challenge.config.GydevGuardConfiguration;
 import cn.gydev.challenge.service.RiskChallengeService;
+import cn.gydev.challenge.service.RiskSignalGateService;
 import cn.gydev.challenge.service.TlsClassifierService;
 import cn.gydev.challenge.service.gydev.GydevGuardService;
 import cn.gydev.challenge.service.gydev.GydevTokenGuard;
@@ -26,7 +27,10 @@ class GydevGuardControllerTest {
     private static final String SEC_CH_UA = "\"Google Chrome\";v=\"126\"";
 
     private final TlsClassifierService tlsClassifierService = new TlsClassifierService();
-    private final RiskChallengeService riskChallengeService = new RiskChallengeService(tlsClassifierService);
+    private final RiskChallengeService riskChallengeService = new RiskChallengeService(
+            tlsClassifierService,
+            new StubRiskSignalGateService()
+    );
     private final GydevGuardService gydevGuardService = new GydevGuardService(
             new GydevGuardConfiguration().gydevGuardConfig(),
             new TlsFingerprintGuard(tlsClassifierService),
@@ -82,7 +86,23 @@ class GydevGuardControllerTest {
         request.addHeader("X-JA3", "ja3-browser");
         request.addHeader("X-JA4", "ja4-browser");
         request.addHeader("X-H2-FP", "chrome-v1");
+        request.setRemoteAddr("127.0.0.1");
         return request;
+    }
+
+    private static final class StubRiskSignalGateService extends RiskSignalGateService {
+        private StubRiskSignalGateService() {
+            super(new cn.gydev.challenge.config.RiskGateProperties(), null);
+        }
+
+        @Override
+        public Map<String, Object> verify(jakarta.servlet.http.HttpServletRequest request, Map<String, Object> tlsClassifierResult) {
+            java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
+            out.put("gatePassed", true);
+            out.put("gateFailures", java.util.List.of());
+            out.put("circuitLevel", "none");
+            return out;
+        }
     }
 
     private String buildGydevToken(Map<String, Object> challenge, long ts, String nonce, int behScore) throws Exception {

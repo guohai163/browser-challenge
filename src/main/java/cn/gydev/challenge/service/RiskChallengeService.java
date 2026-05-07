@@ -47,9 +47,11 @@ public class RiskChallengeService {
     private final Set<String> usedRiskNonces = ConcurrentHashMap.newKeySet();
     private final Set<String> usedProofNonces = ConcurrentHashMap.newKeySet();
     private final TlsClassifierService tlsClassifierService;
+    private final RiskSignalGateService riskSignalGateService;
 
-    public RiskChallengeService(TlsClassifierService tlsClassifierService) {
+    public RiskChallengeService(TlsClassifierService tlsClassifierService, RiskSignalGateService riskSignalGateService) {
         this.tlsClassifierService = tlsClassifierService;
+        this.riskSignalGateService = riskSignalGateService;
     }
 
     /**
@@ -81,7 +83,8 @@ public class RiskChallengeService {
         powParams.put("difficulty", POW_DIFFICULTY);
         powParams.put("maxAgeMs", POW_MAX_AGE_MS);
 
-        // 返回统一挑战载荷：包含 challengeId、过期时间、salt(会话密钥) 与公共规则参数。
+        // 返回统一挑战载荷：包含 challengeId、过期时间与公共规则参数。
+        // 注意：当前版本为兼容前端 SDK，仍返回 salt；生产建议迁移到服务端签发票据模式后移除。
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("challengeId", challengeId);
         result.put("expiresAt", Instant.ofEpochMilli(expiresAt).toString());
@@ -131,10 +134,10 @@ public class RiskChallengeService {
         cleanupExpired();
 
         if (content == null || content.isBlank()) {
-            return decision(false, false, "high", "Content is empty", 0L);
+            return decision(false, false, "high", "content_empty", 0L);
         }
         if (riskToken == null || riskToken.isBlank()) {
-            return decision(false, false, "high", "Risk token is missing", 0L);
+            return decision(false, false, "high", "risk_token_missing", 0L);
         }
         if (enforcePow && (proofToken == null || proofToken.isBlank())) {
             return decision(false, false, "high", "pow_missing", 0L);
@@ -144,38 +147,38 @@ public class RiskChallengeService {
         try {
             payload = parseTokenPayload(riskToken);
         } catch (Exception ex) {
-            return decision(false, false, "high", "Risk token format is invalid", 0L);
+            return decision(false, false, "high", "risk_token_format_invalid", 0L);
         }
 
         if (payload.v != TOKEN_VERSION) {
-            return decision(false, false, "high", "Unsupported token version", 0L);
+            return decision(false, false, "high", "unsupported_token_version", 0L);
         }
 
         long now = System.currentTimeMillis();
         long ageMs = Math.max(0L, now - payload.ts);
         if (ageMs > TOKEN_MAX_AGE_MS) {
-            return decision(false, false, "high", "Risk token is expired", ageMs);
+            return decision(false, false, "high", "risk_token_expired", ageMs);
         }
 
         ChallengeSession session = sessions.get(payload.challengeId);
         if (session == null || session.expiresAtMs < now) {
-            return decision(false, false, "high", "Challenge is missing or expired", ageMs);
+            return decision(false, false, "high", "challenge_missing_or_expired", ageMs);
         }
 
         String nonceKey = payload.challengeId + ":" + payload.nonce;
         // Nonce 去重用于防止挑战窗口内重放。
         if (!usedRiskNonces.add(nonceKey)) {
-            return decision(false, false, "high", "Risk token replay detected", ageMs);
+            return decision(false, false, "high", "risk_token_replay", ageMs);
         }
 
         if (!verifyFpWeakBinding(payload.fpHash, request)) {
-            return decision(false, false, "high", "Fingerprint/header weak binding mismatch", ageMs);
+            return decision(false, false, "high", "fp_weak_binding_mismatch", ageMs);
         }
 
         String signingBase = signingBase(payload);
         String expectedSig = hmacHex(session.sessionKey, signingBase);
         if (!Objects.equals(expectedSig, payload.sig)) {
-            return decision(false, false, "high", "Risk token signature mismatch", ageMs);
+            return decision(false, false, "high", "risk_token_signature_mismatch", ageMs);
         }
 
         boolean powVerified = !enforcePow;
@@ -210,27 +213,36 @@ public class RiskChallengeService {
         }
 
         String riskLevel = "low";
-        String reason = "Challenge passed";
+        String reason = "challenge_passed";
 
         @SuppressWarnings("unchecked")
         Map<String, Object> tls = (Map<String, Object>) tlsClassifierService.classify(request);
         log.info("risk-submit tls-summary: {}", summarizeTls(tls));
-        if (!hasRequiredTlsFingerprints(tls)) {
-            return decision(false, powVerified, "high", "Missing required JA3/JA4/H2 fingerprints", ageMs);
-        }
-        if (!isVerifiedBrowserClient(tls)) {
-            return decision(false, powVerified, "high", "TLS fingerprints are not verified as a real browser", ageMs);
+        Map<String, Object> gateResult = verifyStrongSignals(request, tls);
+        if (!Boolean.TRUE.equals(gateResult.get("gatePassed"))) {
+            Map<String, Object> denied = decision(false, powVerified, "high", "strong_signal_gate_failed", ageMs);
+            denied.put("gatePassed", false);
+            denied.put("gateFailures", gateResult.getOrDefault("gateFailures", List.of("strong_signal_gate_failed")));
+            denied.put("circuitLevel", gateResult.getOrDefault("circuitLevel", "none"));
+            return denied;
         }
         String tlsType = String.valueOf(tls.getOrDefault("type", "unknown"));
 
         if (payload.behScore < 35) {
             riskLevel = "medium";
-            reason = "Challenge passed with low behavior score";
+            reason = "challenge_passed_low_behavior_score";
         }
 
         Map<String, Object> result = decision(true, powVerified, riskLevel, reason, ageMs);
+        result.put("gatePassed", true);
+        result.put("gateFailures", List.of());
+        result.put("circuitLevel", "none");
         result.put("tlsType", tlsType);
         return result;
+    }
+
+    private Map<String, Object> verifyStrongSignals(HttpServletRequest request, Map<String, Object> tls) {
+        return riskSignalGateService.verify(request, tls);
     }
 
     /**

@@ -1,7 +1,33 @@
 services:
+  pgsql:
+    image: postgres:16
+    container_name: browser-challenge-pgsql
+    environment:
+      POSTGRES_DB: gydev_risk
+      POSTGRES_USER: gydev
+      POSTGRES_PASSWORD: gydev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gydev -d gydev_risk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   spring-app:
     image: ghcr.io/guohai163/browser-challenge:latest
     container_name: browser-challenge-spring
+    depends_on:
+      pgsql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pgsql:5432/gydev_risk
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_DATASOURCE_USERNAME: gydev
+      SPRING_DATASOURCE_PASSWORD: gydev
     expose:
       - "8080"
     ports:
@@ -19,3 +45,6 @@ services:
       - "443:443"
       - "9901:9901"
     restart: unless-stopped
+
+volumes:
+  pgdata:

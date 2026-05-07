@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.1.36 - 2026-05-07
+
+### Added
+- Added DB-backed fingerprint whitelist storage with schema initialization (`risk_fingerprint_whitelist`) and repository/service integration.
+- Added whitelist testing endpoints:
+  - `POST /api/gydev/whitelist/capture` to capture current real browser fingerprint into DB whitelist.
+  - `GET /api/gydev/whitelist/test` to validate current request against strong-signal gate.
+  - `GET /api/gydev/whitelist/list` to list enabled whitelist records.
+- Added PostgreSQL runtime dependency and JDBC starter for whitelist persistence.
+
+### Changed
+- Refactored risk decision from score-based allow to strong-signal gate enforcement with explicit `gatePassed/gateFailures/circuitLevel` outputs.
+- Switched runtime datasource defaults from local H2 file mode to PostgreSQL environment-driven configuration.
+- Updated Docker Compose to include `pgsql` service and wired Spring app datasource environment to the compose PostgreSQL network.
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+- Updated Maven project version in `pom.xml` to `0.1.36`.
+
 ## v0.1.35 - 2026-05-07
 
 ### Changed

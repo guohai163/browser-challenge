@@ -1,10 +1,30 @@
 spring:
   application:
     name: springboot4-jdk21-demo
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/gydev_risk}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+    username: ${SPRING_DATASOURCE_USERNAME:gydev}
+    password: ${SPRING_DATASOURCE_PASSWORD:gydev}
 
 server:
   port: 8080
 
 app:
-  version: v0.1.35
-  published-at: 2026-05-07T00:31:32+08:00
+  version: v0.1.36
+  published-at: 2026-05-07T09:41:25+08:00
+
+risk:
+  gate:
+    enabled: true
+    trusted-proxy-ips:
+      - 127.0.0.1
+      - 0:0:0:0:0:0:0:1
+    circuit:
+      light-threshold: 15
+      medium-threshold: 30
+      heavy-threshold: 60
+      window-ms: 60000
+      light-block-ms: 30000
+      medium-block-ms: 180000
+      heavy-block-ms: 600000

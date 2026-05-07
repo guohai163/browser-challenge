@@ -22,7 +22,10 @@ class RiskChallengeServiceTest {
     private static final String SEC_CH_UA = "\"Google Chrome\";v=\"126\"";
     private static final int POW_DIFFICULTY = 4;
 
-    private final RiskChallengeService service = new RiskChallengeService(new TlsClassifierService());
+    private final RiskChallengeService service = new RiskChallengeService(
+            new TlsClassifierService(),
+            new StubRiskSignalGateService()
+    );
 
     @Test
     void shouldAcceptValidRiskAndProofToken() throws Exception {
@@ -75,7 +78,7 @@ class RiskChallengeServiceTest {
 
         assertThat(first.get("accepted")).isEqualTo(true);
         assertThat(replay.get("accepted")).isEqualTo(false);
-        assertThat(replay.get("reason")).isEqualTo("Risk token replay detected");
+        assertThat(replay.get("reason")).isEqualTo("risk_token_replay");
     }
 
     @Test
@@ -106,7 +109,7 @@ class RiskChallengeServiceTest {
     }
 
     @Test
-    void shouldRejectWhenTlsFingerprintsAreNotVerifiedAsBrowser() throws Exception {
+    void shouldRejectWhenStrongSignalGateFails() throws Exception {
         Map<String, Object> challenge = service.initChallenge();
         MockHttpServletRequest request = programLikeRequest();
         String riskToken = buildRiskToken(challenge, System.currentTimeMillis(), "risk-nonce-7", 80, false);
@@ -115,7 +118,8 @@ class RiskChallengeServiceTest {
         Map<String, Object> result = service.validateSubmission("hello", riskToken, proofToken, request);
 
         assertThat(result.get("accepted")).isEqualTo(false);
-        assertThat(result.get("reason")).isEqualTo("TLS fingerprints are not verified as a real browser");
+        assertThat(result.get("reason")).isEqualTo("strong_signal_gate_failed");
+        assertThat(result.get("gatePassed")).isEqualTo(false);
     }
 
     private MockHttpServletRequest baseRequest() {
@@ -127,6 +131,7 @@ class RiskChallengeServiceTest {
         request.addHeader("X-JA3", "ja3-browser");
         request.addHeader("X-JA4", "ja4-browser");
         request.addHeader("X-H2-FP", "chrome-v1");
+        request.setRemoteAddr("127.0.0.1");
         return request;
     }
 
@@ -139,7 +144,37 @@ class RiskChallengeServiceTest {
         request.addHeader("X-JA3", "ja3-program");
         request.addHeader("X-JA4", "ja4-program");
         request.addHeader("X-H2-FP", "curl-h2");
+        request.setRemoteAddr("127.0.0.1");
         return request;
+    }
+
+    private static final class StubRiskSignalGateService extends RiskSignalGateService {
+        private StubRiskSignalGateService() {
+            super(new cn.gydev.challenge.config.RiskGateProperties(), null);
+        }
+
+        @Override
+        public Map<String, Object> verify(jakarta.servlet.http.HttpServletRequest request, Map<String, Object> tlsClassifierResult) {
+            String ja3 = readFingerprintForTest(tlsClassifierResult, "ja3");
+            String ja4 = readFingerprintForTest(tlsClassifierResult, "ja4");
+            String h2 = readFingerprintForTest(tlsClassifierResult, "h2");
+            boolean pass = "ja3-browser".equals(ja3) && "ja4-browser".equals(ja4) && "chrome-v1".equals(h2);
+            java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
+            out.put("gatePassed", pass);
+            out.put("gateFailures", pass ? java.util.List.of() : java.util.List.of("fingerprint_not_whitelisted"));
+            out.put("circuitLevel", "none");
+            return out;
+        }
+
+        @SuppressWarnings("unchecked")
+        private String readFingerprintForTest(Map<String, Object> tlsClassifierResult, String key) {
+            Object fps = tlsClassifierResult.get("fingerprints");
+            if (!(fps instanceof Map<?, ?> map)) {
+                return "";
+            }
+            Object raw = ((Map<String, Object>) map).get(key);
+            return raw == null ? "" : String.valueOf(raw).trim();
+        }
     }
 
     private String buildRiskToken(
