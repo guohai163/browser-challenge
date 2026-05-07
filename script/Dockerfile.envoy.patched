@@ -1,19 +1,7 @@
-FROM ubuntu:22.04 AS envoy-build
+FROM envoyproxy/envoy-build-ubuntu:latest AS envoy-build
 WORKDIR /src/envoy
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl git python3 python3-pip build-essential pkg-config unzip zip \
-    openjdk-17-jre-headless cmake ninja-build libtinfo5 libncurses5 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Envoy LLVM toolchain may require libtinfo.so.5 on newer Ubuntu images.
-RUN if [ ! -e /usr/lib/x86_64-linux-gnu/libtinfo.so.5 ] && [ -e /usr/lib/x86_64-linux-gnu/libtinfo.so.6 ]; then \
-      ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/x86_64-linux-gnu/libtinfo.so.5; \
-    fi
-
-# Install bazelisk
-RUN curl -L -o /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.24.1/bazelisk-linux-amd64 \
-    && chmod +x /usr/local/bin/bazel
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git && rm -rf /var/lib/apt/lists/*
 
 ARG ENVOY_REF=main
 RUN git clone --depth 1 --branch ${ENVOY_REF} https://github.com/envoyproxy/envoy /src/envoy
@@ -21,7 +9,7 @@ COPY script/envoy-patch/envoy-ja3-raw.patch /tmp/envoy-ja3-raw.patch
 RUN cd /src/envoy && git apply --3way --whitespace=nowarn /tmp/envoy-ja3-raw.patch
 
 # Build envoy binary with local patches
-RUN bazel build -c opt //source/exe:envoy-static
+RUN bazel build -c opt --config=clang //source/exe:envoy-static
 
 FROM rust:1.78-bookworm AS wasm-build
 WORKDIR /src
