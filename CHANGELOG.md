@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.50 - 2026-05-08
+
+### Added
+- Added embedded browser identity support for WeCom and WeChat in whitelist capture/gate parsing:
+  - `wxwork/<major>` is now parsed as `browser_family=wecom`.
+  - `micromessenger/<major>` is now parsed as `browser_family=wechat`.
+- Added `RiskSignalGateServiceTest` coverage to verify WeCom embedded iOS User-Agent can be captured into whitelist successfully.
+
+### Changed
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+- Updated Maven project version in `pom.xml` to `0.1.50`.
+
 ## v0.1.42 - 2026-05-07
 
 ### Changed

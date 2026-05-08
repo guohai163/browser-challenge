@@ -52,6 +52,28 @@ class RiskSignalGateServiceTest {
         assertThat(repo.isWhitelistedWithoutJa3Called).isTrue();
     }
 
+    @Test
+    void shouldCaptureWecomEmbeddedBrowserFingerprint() {
+        RiskGateProperties properties = new RiskGateProperties();
+        properties.setEnabled(true);
+        properties.setRequireJa3(false);
+        StubRiskFingerprintWhitelistRepository repo = new StubRiskFingerprintWhitelistRepository();
+        RiskSignalGateService service = new RiskSignalGateService(properties, repo);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader(
+                "User-Agent",
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 wxwork/5.0.7 MicroMessenger/7.0.1");
+        request.setRemoteAddr("127.0.0.1");
+        Map<String, Object> tls = tlsFingerprints("773906b0efdefa24a7f2b8eb6985bf37", "ja4-wecom", "h2-wecom");
+
+        Map<String, Object> result = service.captureCurrentRequestToWhitelist(request, tls);
+
+        assertThat(result.get("captured")).isEqualTo(true);
+        assertThat(result.get("browserFamily")).isEqualTo("wecom");
+        assertThat(result.get("majorVersion")).isEqualTo(5);
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> tlsFingerprints(String ja3, String ja4, String h2) {
         Map<String, Object> out = new LinkedHashMap<>();

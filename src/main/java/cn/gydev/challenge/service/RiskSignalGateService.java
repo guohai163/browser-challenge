@@ -221,6 +221,12 @@ public class RiskSignalGateService {
             return new BrowserIdentity("unknown", 0);
         }
         String ua = userAgent.toLowerCase(Locale.ROOT);
+        if (ua.contains("wxwork/")) {
+            return new BrowserIdentity("wecom", majorVersion(ua, "wxwork/"));
+        }
+        if (ua.contains("micromessenger/")) {
+            return new BrowserIdentity("wechat", majorVersion(ua, "micromessenger/"));
+        }
         if (ua.contains("edg/")) {
             return new BrowserIdentity("edge", majorVersion(ua, "edg/"));
         }
