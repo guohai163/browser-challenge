@@ -32,8 +32,8 @@ public class GydevGuardController {
      * @return 挑战参数
      */
     @GetMapping("/challenge/init")
-    public Map<String, Object> initChallenge() {
-        return gydevGuardService.initChallenge();
+    public Map<String, Object> initChallenge(HttpServletRequest request) {
+        return gydevGuardService.initChallenge(request);
     }
 
     /**

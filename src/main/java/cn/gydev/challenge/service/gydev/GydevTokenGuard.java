@@ -23,8 +23,8 @@ public class GydevTokenGuard {
      *
      * @return 挑战载荷
      */
-    public Map<String, Object> initChallenge() {
-        return riskChallengeService.initChallenge();
+    public Map<String, Object> initChallenge(HttpServletRequest request) {
+        return riskChallengeService.initChallenge(request);
     }
 
     /**

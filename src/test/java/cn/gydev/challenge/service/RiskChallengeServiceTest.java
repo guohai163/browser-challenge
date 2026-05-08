@@ -2,6 +2,7 @@ package cn.gydev.challenge.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import cn.gydev.challenge.service.gydev.GydevGuardConfig;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
@@ -21,15 +22,17 @@ class RiskChallengeServiceTest {
     private static final String LANG = "en-US,en;q=0.9";
     private static final String SEC_CH_UA = "\"Google Chrome\";v=\"126\"";
     private static final int POW_DIFFICULTY = 4;
+    private final GydevGuardConfig config = new GydevGuardConfig();
 
     private final RiskChallengeService service = new RiskChallengeService(
             new TlsClassifierService(),
-            new StubRiskSignalGateService()
+            new StubRiskSignalGateService(),
+            config
     );
 
     @Test
     void shouldAcceptValidRiskAndProofToken() throws Exception {
-        Map<String, Object> challenge = service.initChallenge();
+        Map<String, Object> challenge = service.initChallenge(baseRequest());
         MockHttpServletRequest request = baseRequest();
         String riskToken = buildRiskToken(challenge, System.currentTimeMillis(), "risk-nonce-1", 78, false);
         String proofToken = buildProofToken(challenge, "risk-nonce-1", System.currentTimeMillis(), false, false);
@@ -42,7 +45,7 @@ class RiskChallengeServiceTest {
 
     @Test
     void shouldRejectMissingProofToken() throws Exception {
-        Map<String, Object> challenge = service.initChallenge();
+        Map<String, Object> challenge = service.initChallenge(baseRequest());
         MockHttpServletRequest request = baseRequest();
         String riskToken = buildRiskToken(challenge, System.currentTimeMillis(), "risk-nonce-2", 66, false);
 
@@ -54,7 +57,7 @@ class RiskChallengeServiceTest {
 
     @Test
     void shouldRejectExpiredProofToken() throws Exception {
-        Map<String, Object> challenge = service.initChallenge();
+        Map<String, Object> challenge = service.initChallenge(baseRequest());
         MockHttpServletRequest request = baseRequest();
         String riskToken = buildRiskToken(challenge, System.currentTimeMillis(), "risk-nonce-3", 65, false);
         long expiredTs = System.currentTimeMillis() - 90_000L;
@@ -68,7 +71,7 @@ class RiskChallengeServiceTest {
 
     @Test
     void shouldRejectReplayProofToken() throws Exception {
-        Map<String, Object> challenge = service.initChallenge();
+        Map<String, Object> challenge = service.initChallenge(baseRequest());
         MockHttpServletRequest request = baseRequest();
         String riskToken = buildRiskToken(challenge, System.currentTimeMillis(), "risk-nonce-4", 70, false);
         String proofToken = buildProofToken(challenge, "risk-nonce-4", System.currentTimeMillis(), false, false);
@@ -83,7 +86,7 @@ class RiskChallengeServiceTest {
 
     @Test
     void shouldRejectInvalidPowDifficulty() throws Exception {
-        Map<String, Object> challenge = service.initChallenge();
+        Map<String, Object> challenge = service.initChallenge(baseRequest());
         MockHttpServletRequest request = baseRequest();
         String riskToken = buildRiskToken(challenge, System.currentTimeMillis(), "risk-nonce-5", 55, false);
         String invalidProofToken = buildProofToken(challenge, "risk-nonce-5", System.currentTimeMillis(), true, false);
@@ -96,8 +99,8 @@ class RiskChallengeServiceTest {
 
     @Test
     void shouldRejectProofChallengeMismatch() throws Exception {
-        Map<String, Object> challenge = service.initChallenge();
-        Map<String, Object> otherChallenge = service.initChallenge();
+        Map<String, Object> challenge = service.initChallenge(baseRequest());
+        Map<String, Object> otherChallenge = service.initChallenge(baseRequest());
         MockHttpServletRequest request = baseRequest();
         String riskToken = buildRiskToken(challenge, System.currentTimeMillis(), "risk-nonce-6", 60, false);
         String wrongChallengeProof = buildProofToken(otherChallenge, "risk-nonce-6", System.currentTimeMillis(), false, false);
@@ -110,7 +113,7 @@ class RiskChallengeServiceTest {
 
     @Test
     void shouldRejectWhenStrongSignalGateFails() throws Exception {
-        Map<String, Object> challenge = service.initChallenge();
+        Map<String, Object> challenge = service.initChallenge(baseRequest());
         MockHttpServletRequest request = programLikeRequest();
         String riskToken = buildRiskToken(challenge, System.currentTimeMillis(), "risk-nonce-7", 80, false);
         String proofToken = buildProofToken(challenge, "risk-nonce-7", System.currentTimeMillis(), false, false);
@@ -120,6 +123,40 @@ class RiskChallengeServiceTest {
         assertThat(result.get("accepted")).isEqualTo(false);
         assertThat(result.get("reason")).isEqualTo("strong_signal_gate_failed");
         assertThat(result.get("gatePassed")).isEqualTo(false);
+    }
+
+    @Test
+    void shouldRejectChallengeReuseAfterSuccess() throws Exception {
+        Map<String, Object> challenge = service.initChallenge(baseRequest());
+        String nonce = "risk-nonce-reuse";
+        String riskToken = buildRiskToken(challenge, System.currentTimeMillis(), nonce, 80, false);
+        String proofToken = buildProofToken(challenge, nonce, System.currentTimeMillis(), false, false);
+        Map<String, Object> first = service.validateSubmission("hello", riskToken, proofToken, baseRequest());
+
+        String nonce2 = "risk-nonce-reuse-2";
+        String riskToken2 = buildRiskToken(challenge, System.currentTimeMillis(), nonce2, 80, false);
+        String proofToken2 = buildProofToken(challenge, nonce2, System.currentTimeMillis(), false, false);
+        Map<String, Object> second = service.validateSubmission("hello", riskToken2, proofToken2, baseRequest());
+
+        assertThat(first.get("accepted")).isEqualTo(true);
+        assertThat(second.get("accepted")).isEqualTo(false);
+        assertThat(second.get("reason")).isEqualTo("challenge_reused");
+    }
+
+    @Test
+    void shouldRejectWhenFingerprintDriftedFromInit() throws Exception {
+        Map<String, Object> challenge = service.initChallenge(baseRequest());
+        String nonce = "risk-nonce-drift";
+        String riskToken = buildRiskToken(challenge, System.currentTimeMillis(), nonce, 80, false);
+        String proofToken = buildProofToken(challenge, nonce, System.currentTimeMillis(), false, false);
+
+        MockHttpServletRequest drift = baseRequest();
+        drift.removeHeader("X-JA4");
+        drift.addHeader("X-JA4", "ja4-drifted");
+        Map<String, Object> result = service.validateSubmission("hello", riskToken, proofToken, drift);
+
+        assertThat(result.get("accepted")).isEqualTo(false);
+        assertThat(result.get("reason")).isEqualTo("challenge_fp_mismatch");
     }
 
     private MockHttpServletRequest baseRequest() {

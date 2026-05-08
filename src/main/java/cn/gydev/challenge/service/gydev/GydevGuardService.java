@@ -34,9 +34,9 @@ public class GydevGuardService {
      *
      * @return 含防护开关信息的挑战载荷
      */
-    public Map<String, Object> initChallenge() {
+    public Map<String, Object> initChallenge(HttpServletRequest request) {
         // 先从核心挑战服务生成基础挑战数据（challengeId、salt、pow 参数等）。
-        Map<String, Object> challenge = gydevTokenGuard.initChallenge();
+        Map<String, Object> challenge = gydevTokenGuard.initChallenge(request);
         // 将当前后端防护开关快照附加到返回值，便于前端按能力动态处理流程。
         challenge.put("guardConfig", Map.of(
                 "enableTlsFingerprint", config.isEnableTlsFingerprint(),

@@ -7,6 +7,7 @@ import cn.gydev.challenge.service.RiskChallengeService;
 import cn.gydev.challenge.service.RiskSignalGateService;
 import cn.gydev.challenge.service.TlsClassifierService;
 import cn.gydev.challenge.service.gydev.GydevGuardService;
+import cn.gydev.challenge.service.gydev.GydevGuardConfig;
 import cn.gydev.challenge.service.gydev.GydevTokenGuard;
 import cn.gydev.challenge.service.gydev.SentinelProofGuard;
 import cn.gydev.challenge.service.gydev.TlsFingerprintGuard;
@@ -25,14 +26,16 @@ class GydevGuardControllerTest {
     private static final String UA = "Mozilla/5.0 Chrome/126.0";
     private static final String LANG = "en-US,en;q=0.9";
     private static final String SEC_CH_UA = "\"Google Chrome\";v=\"126\"";
+    private final GydevGuardConfig config = new GydevGuardConfiguration().gydevGuardConfig();
 
     private final TlsClassifierService tlsClassifierService = new TlsClassifierService();
     private final RiskChallengeService riskChallengeService = new RiskChallengeService(
             tlsClassifierService,
-            new StubRiskSignalGateService()
+            new StubRiskSignalGateService(),
+            config
     );
     private final GydevGuardService gydevGuardService = new GydevGuardService(
-            new GydevGuardConfiguration().gydevGuardConfig(),
+            config,
             new TlsFingerprintGuard(tlsClassifierService),
             new GydevTokenGuard(riskChallengeService),
             new SentinelProofGuard()
@@ -41,14 +44,14 @@ class GydevGuardControllerTest {
 
     @Test
     void initShouldReturnPowAndGuardConfig() {
-        Map<String, Object> challenge = controller.initChallenge();
+        Map<String, Object> challenge = controller.initChallenge(baseRequest());
         assertThat(challenge).containsKey("pow");
         assertThat(challenge).containsKey("guardConfig");
     }
 
     @Test
     void submitGetAndPostShouldReturnMinimalClientPayload() throws Exception {
-        Map<String, Object> challenge = controller.initChallenge();
+        Map<String, Object> challenge = controller.initChallenge(baseRequest());
         String getNonce = "nonce-get";
         String getGydevToken = buildGydevToken(challenge, System.currentTimeMillis(), getNonce, 75);
         String getSentinel = buildSentinelToken(challenge, getNonce, System.currentTimeMillis());

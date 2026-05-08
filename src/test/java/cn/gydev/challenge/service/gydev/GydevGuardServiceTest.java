@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import cn.gydev.challenge.service.RiskChallengeService;
 import cn.gydev.challenge.service.RiskSignalGateService;
 import cn.gydev.challenge.service.TlsClassifierService;
+import cn.gydev.challenge.service.gydev.GydevGuardConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
@@ -22,7 +23,7 @@ class GydevGuardServiceTest {
         GydevGuardService service = new GydevGuardService(
                 config,
                 new TlsFingerprintGuard(tls),
-                new GydevTokenGuard(new RiskChallengeService(tls, new StubRiskSignalGateService())),
+                new GydevTokenGuard(new RiskChallengeService(tls, new StubRiskSignalGateService(), config)),
                 new SentinelProofGuard()
         );
 
@@ -44,7 +45,7 @@ class GydevGuardServiceTest {
         GydevGuardService service = new GydevGuardService(
                 config,
                 new TlsFingerprintGuard(tls),
-                new GydevTokenGuard(new RiskChallengeService(tls, new StubRiskSignalGateService())),
+                new GydevTokenGuard(new RiskChallengeService(tls, new StubRiskSignalGateService(), config)),
                 new SentinelProofGuard()
         );
 

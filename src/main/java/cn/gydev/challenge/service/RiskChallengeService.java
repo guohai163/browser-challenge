@@ -1,5 +1,6 @@
 package cn.gydev.challenge.service;
 
+import cn.gydev.challenge.service.gydev.GydevGuardConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -30,13 +31,9 @@ import org.springframework.stereotype.Service;
 public class RiskChallengeService {
     private static final Logger log = LoggerFactory.getLogger(RiskChallengeService.class);
 
-    private static final long CHALLENGE_TTL_MS = 120_000L;
-    private static final long TOKEN_MAX_AGE_MS = 120_000L;
-    private static final long POW_MAX_AGE_MS = 60_000L;
     private static final int HEADER_HASH_PREFIX_LEN = 12;
     private static final int TOKEN_VERSION = 1;
     private static final int PROOF_TOKEN_VERSION = 1;
-    private static final int POW_DIFFICULTY = 4;
     private static final String HMAC_ALGO = "HmacSHA256";
     private static final String POW_ALGO = "sha256-prefix-zero";
 
@@ -48,10 +45,15 @@ public class RiskChallengeService {
     private final Set<String> usedProofNonces = ConcurrentHashMap.newKeySet();
     private final TlsClassifierService tlsClassifierService;
     private final RiskSignalGateService riskSignalGateService;
+    private final GydevGuardConfig guardConfig;
 
-    public RiskChallengeService(TlsClassifierService tlsClassifierService, RiskSignalGateService riskSignalGateService) {
+    public RiskChallengeService(
+            TlsClassifierService tlsClassifierService,
+            RiskSignalGateService riskSignalGateService,
+            GydevGuardConfig guardConfig) {
         this.tlsClassifierService = tlsClassifierService;
         this.riskSignalGateService = riskSignalGateService;
+        this.guardConfig = guardConfig;
     }
 
     /**
@@ -59,7 +61,7 @@ public class RiskChallengeService {
      *
      * @return 挑战参数
      */
-    public Map<String, Object> initChallenge() {
+    public Map<String, Object> initChallenge(HttpServletRequest request) {
         // 每次初始化前先清理过期会话，避免内存中残留无效挑战数据。
         cleanupExpired();
 
@@ -67,21 +69,23 @@ public class RiskChallengeService {
         String challengeId = randomHex(16);
         String sessionKey = randomHex(32);
         long now = System.currentTimeMillis();
-        long expiresAt = now + CHALLENGE_TTL_MS;
+        long expiresAt = now + Math.max(5_000L, guardConfig.getChallengeTtlMs());
+        FingerprintSnapshot initSnapshot = snapshotFromRequest(request);
+        int powDifficulty = dynamicPowDifficulty(initSnapshot);
 
         // 将挑战会话缓存到内存，供提交阶段按 challengeId 回查。
-        sessions.put(challengeId, new ChallengeSession(challengeId, sessionKey, expiresAt));
+        sessions.put(challengeId, new ChallengeSession(challengeId, sessionKey, expiresAt, powDifficulty, initSnapshot));
 
         // 组织前端生成 Gydev-Token 所需的公开参数。
         Map<String, Object> publicParams = new LinkedHashMap<>();
         publicParams.put("tokenVersion", TOKEN_VERSION);
-        publicParams.put("maxAgeMs", TOKEN_MAX_AGE_MS);
+        publicParams.put("maxAgeMs", Math.max(5_000L, guardConfig.getTokenMaxAgeMs()));
         publicParams.put("fpHashFormat", "headerPrefix:deviceHash");
         // 组织前端计算 Sentinel PoW 所需参数。
         Map<String, Object> powParams = new LinkedHashMap<>();
         powParams.put("algo", POW_ALGO);
-        powParams.put("difficulty", POW_DIFFICULTY);
-        powParams.put("maxAgeMs", POW_MAX_AGE_MS);
+        powParams.put("difficulty", powDifficulty);
+        powParams.put("maxAgeMs", Math.max(5_000L, guardConfig.getPowMaxAgeMs()));
 
         // 返回统一挑战载荷：包含 challengeId、过期时间与公共规则参数。
         // 注意：当前版本为兼容前端 SDK，仍返回 salt；生产建议迁移到服务端签发票据模式后移除。
@@ -156,13 +160,19 @@ public class RiskChallengeService {
 
         long now = System.currentTimeMillis();
         long ageMs = Math.max(0L, now - payload.ts);
-        if (ageMs > TOKEN_MAX_AGE_MS) {
+        if (ageMs > Math.max(5_000L, guardConfig.getTokenMaxAgeMs())) {
             return decision(false, false, "high", "risk_token_expired", ageMs);
         }
 
         ChallengeSession session = sessions.get(payload.challengeId);
         if (session == null || session.expiresAtMs < now) {
             return decision(false, false, "high", "challenge_missing_or_expired", ageMs);
+        }
+        if (session.usedOnce) {
+            return decision(false, false, "high", "challenge_reused", ageMs);
+        }
+        if (!incrementAttempt(session)) {
+            return decision(false, false, "high", "challenge_attempt_exceeded", ageMs);
         }
 
         String nonceKey = payload.challengeId + ":" + payload.nonce;
@@ -173,6 +183,15 @@ public class RiskChallengeService {
 
         if (!verifyFpWeakBinding(payload.fpHash, request)) {
             return decision(false, false, "high", "fp_weak_binding_mismatch", ageMs);
+        }
+        FingerprintSnapshot submitSnapshot = snapshotFromRequest(request);
+        String consistencyError = strictConsistencyCheck(session.initSnapshot, submitSnapshot);
+        if (!consistencyError.isBlank()) {
+            return decision(false, false, "high", consistencyError, ageMs);
+        }
+        String browserConsistencyError = browserConsistencyCheck(submitSnapshot);
+        if (!browserConsistencyError.isBlank()) {
+            return decision(false, false, "high", browserConsistencyError, ageMs);
         }
 
         String signingBase = signingBase(payload);
@@ -197,7 +216,7 @@ public class RiskChallengeService {
                 return decision(false, false, "high", "pow_invalid", ageMs);
             }
             long proofAgeMs = Math.max(0L, now - proof.ts);
-            if (proofAgeMs > POW_MAX_AGE_MS) {
+            if (proofAgeMs > Math.max(5_000L, guardConfig.getPowMaxAgeMs())) {
                 return decision(false, false, "high", "pow_expired", ageMs);
             }
             String proofNonceKey = proof.challengeId + ":" + proof.proofNonce;
@@ -206,7 +225,7 @@ public class RiskChallengeService {
                 return decision(false, false, "high", "pow_replay", ageMs);
             }
             String expectedHash = sha256Hex(proof.challengeId + "|" + proof.riskNonce + "|" + proof.proofNonce + "|" + proof.ts);
-            if (!hasLeadingZeros(expectedHash, POW_DIFFICULTY) || !expectedHash.equals(proof.hash)) {
+            if (!hasLeadingZeros(expectedHash, session.powDifficulty) || !expectedHash.equals(proof.hash)) {
                 return decision(false, false, "high", "pow_invalid", ageMs);
             }
             powVerified = true;
@@ -234,6 +253,7 @@ public class RiskChallengeService {
         }
 
         Map<String, Object> result = decision(true, powVerified, riskLevel, reason, ageMs);
+        markChallengeUsed(session);
         result.put("gatePassed", true);
         result.put("gateFailures", List.of());
         result.put("circuitLevel", "none");
@@ -360,6 +380,90 @@ public class RiskChallengeService {
         String secChUa = canonicalSecChUa(header(request, "Sec-CH-UA"));
         String expected = sha256Hex(ua + "|" + lang + "|" + secChUa).substring(0, HEADER_HASH_PREFIX_LEN);
         return expected.equals(prefix);
+    }
+
+    private String strictConsistencyCheck(FingerprintSnapshot init, FingerprintSnapshot submit) {
+        if (!guardConfig.isStrictConsistency()) {
+            return "";
+        }
+        if (!Objects.equals(init.fpHash, submit.fpHash)) {
+            return "challenge_fp_mismatch";
+        }
+        if (!Objects.equals(init.headerHash, submit.headerHash)) {
+            return "header_drift";
+        }
+        if (!Objects.equals(init.ja4, submit.ja4) || !Objects.equals(init.h2, submit.h2) || !Objects.equals(init.ja3, submit.ja3)) {
+            return "fingerprint_drift";
+        }
+        return "";
+    }
+
+    private String browserConsistencyCheck(FingerprintSnapshot snapshot) {
+        String ua = snapshot.userAgent.toLowerCase(Locale.ROOT);
+        String secChUa = snapshot.secChUa;
+        if (guardConfig.isRequireSecChUaForChrome() && ua.contains("chrome/1") && secChUa.isBlank()) {
+            return "header_drift";
+        }
+        if (ua.contains("wxwork/") || ua.contains("micromessenger/")) {
+            if (snapshot.ja4.contains("chrome") && snapshot.h2.contains("curl")) {
+                return "fingerprint_drift";
+            }
+        }
+        return "";
+    }
+
+    @SuppressWarnings("unchecked")
+    private FingerprintSnapshot snapshotFromRequest(HttpServletRequest request) {
+        String ua = header(request, "User-Agent");
+        String lang = canonicalPrimaryLanguage(header(request, "Accept-Language"));
+        String secChUa = canonicalSecChUa(header(request, "Sec-CH-UA"));
+        Map<String, Object> tls = tlsClassifierService.classify(request);
+        Object fpsObj = tls.get("fingerprints");
+        String ja3 = "";
+        String ja4 = "";
+        String h2 = "";
+        if (fpsObj instanceof Map<?, ?> map) {
+            ja3 = stringValue(((Map<String, Object>) map).get("ja3")).toLowerCase(Locale.ROOT);
+            ja4 = stringValue(((Map<String, Object>) map).get("ja4")).toLowerCase(Locale.ROOT);
+            h2 = stringValue(((Map<String, Object>) map).get("h2")).toLowerCase(Locale.ROOT);
+        }
+        String fpHash = sha256Hex(ja3 + "|" + ja4 + "|" + h2);
+        String headerHash = sha256Hex(ua + "|" + lang + "|" + secChUa);
+        return new FingerprintSnapshot(ua, lang, secChUa, ja3, ja4, h2, fpHash, headerHash);
+    }
+
+    private int dynamicPowDifficulty(FingerprintSnapshot snapshot) {
+        int base = Math.max(1, guardConfig.getPowBaseDifficulty());
+        int step = Math.max(0, guardConfig.getPowRiskStep());
+        int max = Math.max(base, guardConfig.getPowMaxDifficulty());
+        int risk = 0;
+        if (snapshot.secChUa.isBlank() && snapshot.userAgent.toLowerCase(Locale.ROOT).contains("chrome/")) {
+            risk += 1;
+        }
+        if (snapshot.ja4.isBlank() || snapshot.h2.isBlank()) {
+            risk += 1;
+        }
+        if (snapshot.userAgent.toLowerCase(Locale.ROOT).contains("curl") || snapshot.h2.contains("curl")) {
+            risk += 2;
+        }
+        return Math.min(max, base + (risk * step));
+    }
+
+    private boolean incrementAttempt(ChallengeSession session) {
+        synchronized (session) {
+            int limit = Math.max(1, guardConfig.getMaxAttemptsPerChallenge());
+            if (session.attemptCount >= limit) {
+                return false;
+            }
+            session.attemptCount++;
+            return true;
+        }
+    }
+
+    private void markChallengeUsed(ChallengeSession session) {
+        synchronized (session) {
+            session.usedOnce = true;
+        }
     }
 
     /**
@@ -574,7 +678,41 @@ public class RiskChallengeService {
         return true;
     }
 
-    private record ChallengeSession(String challengeId, String sessionKey, long expiresAtMs) {
+    private static final class ChallengeSession {
+        private final String challengeId;
+        private final String sessionKey;
+        private final long expiresAtMs;
+        private final int powDifficulty;
+        private final FingerprintSnapshot initSnapshot;
+        private int attemptCount;
+        private boolean usedOnce;
+
+        private ChallengeSession(
+                String challengeId,
+                String sessionKey,
+                long expiresAtMs,
+                int powDifficulty,
+                FingerprintSnapshot initSnapshot) {
+            this.challengeId = challengeId;
+            this.sessionKey = sessionKey;
+            this.expiresAtMs = expiresAtMs;
+            this.powDifficulty = powDifficulty;
+            this.initSnapshot = initSnapshot;
+            this.attemptCount = 0;
+            this.usedOnce = false;
+        }
+    }
+
+    private record FingerprintSnapshot(
+            String userAgent,
+            String language,
+            String secChUa,
+            String ja3,
+            String ja4,
+            String h2,
+            String fpHash,
+            String headerHash
+    ) {
     }
 
     private record TokenPayload(

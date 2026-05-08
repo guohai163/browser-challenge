@@ -22,6 +22,15 @@ public class GydevGuardConfiguration {
         config.setEnableH2Fingerprint(true);
         config.setEnableGydevToken(true);
         config.setEnableSentinelProofToken(true);
+        config.setStrictConsistency(true);
+        config.setRequireSecChUaForChrome(true);
+        config.setMaxAttemptsPerChallenge(3);
+        config.setChallengeTtlMs(90_000L);
+        config.setTokenMaxAgeMs(90_000L);
+        config.setPowMaxAgeMs(45_000L);
+        config.setPowBaseDifficulty(4);
+        config.setPowRiskStep(1);
+        config.setPowMaxDifficulty(7);
         return config;
     }
 }

@@ -23,6 +23,15 @@ public class GydevGuardConfig {
      * 是否启用 Gydev-Sentinel-Proof-Token（PoW）校验能力。
      */
     private boolean enableSentinelProofToken = true;
+    private boolean strictConsistency = true;
+    private boolean requireSecChUaForChrome = true;
+    private int maxAttemptsPerChallenge = 3;
+    private long challengeTtlMs = 90_000L;
+    private long tokenMaxAgeMs = 90_000L;
+    private long powMaxAgeMs = 45_000L;
+    private int powBaseDifficulty = 4;
+    private int powRiskStep = 1;
+    private int powMaxDifficulty = 7;
 
     /**
      * 获取 TLS 指纹开关。
@@ -94,5 +103,77 @@ public class GydevGuardConfig {
      */
     public void setEnableSentinelProofToken(boolean enableSentinelProofToken) {
         this.enableSentinelProofToken = enableSentinelProofToken;
+    }
+
+    public boolean isStrictConsistency() {
+        return strictConsistency;
+    }
+
+    public void setStrictConsistency(boolean strictConsistency) {
+        this.strictConsistency = strictConsistency;
+    }
+
+    public boolean isRequireSecChUaForChrome() {
+        return requireSecChUaForChrome;
+    }
+
+    public void setRequireSecChUaForChrome(boolean requireSecChUaForChrome) {
+        this.requireSecChUaForChrome = requireSecChUaForChrome;
+    }
+
+    public int getMaxAttemptsPerChallenge() {
+        return maxAttemptsPerChallenge;
+    }
+
+    public void setMaxAttemptsPerChallenge(int maxAttemptsPerChallenge) {
+        this.maxAttemptsPerChallenge = maxAttemptsPerChallenge;
+    }
+
+    public long getChallengeTtlMs() {
+        return challengeTtlMs;
+    }
+
+    public void setChallengeTtlMs(long challengeTtlMs) {
+        this.challengeTtlMs = challengeTtlMs;
+    }
+
+    public long getTokenMaxAgeMs() {
+        return tokenMaxAgeMs;
+    }
+
+    public void setTokenMaxAgeMs(long tokenMaxAgeMs) {
+        this.tokenMaxAgeMs = tokenMaxAgeMs;
+    }
+
+    public long getPowMaxAgeMs() {
+        return powMaxAgeMs;
+    }
+
+    public void setPowMaxAgeMs(long powMaxAgeMs) {
+        this.powMaxAgeMs = powMaxAgeMs;
+    }
+
+    public int getPowBaseDifficulty() {
+        return powBaseDifficulty;
+    }
+
+    public void setPowBaseDifficulty(int powBaseDifficulty) {
+        this.powBaseDifficulty = powBaseDifficulty;
+    }
+
+    public int getPowRiskStep() {
+        return powRiskStep;
+    }
+
+    public void setPowRiskStep(int powRiskStep) {
+        this.powRiskStep = powRiskStep;
+    }
+
+    public int getPowMaxDifficulty() {
+        return powMaxDifficulty;
+    }
+
+    public void setPowMaxDifficulty(int powMaxDifficulty) {
+        this.powMaxDifficulty = powMaxDifficulty;
     }
 }

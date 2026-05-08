@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.1.51 - 2026-05-08
+
+### Added
+- Added strict challenge/session consistency enforcement to resist `curl_cffi` impersonation:
+  - bind `challenge/init` to server-observed request fingerprint snapshot (`ja3/ja4/h2` + UA/header hash);
+  - reject submit on mismatch with explicit reasons: `challenge_fp_mismatch`, `header_drift`, `fingerprint_drift`.
+- Added challenge lifecycle hardening:
+  - single-use challenge enforcement (`challenge_reused`);
+  - max attempt guard (`challenge_attempt_exceeded`).
+- Added dynamic PoW difficulty assignment per challenge session based on request risk signals.
+- Added strict guard runtime knobs in `GydevGuardConfig`/`GydevGuardConfiguration`:
+  - `strictConsistency`
+  - `requireSecChUaForChrome`
+  - `maxAttemptsPerChallenge`
+  - `challengeTtlMs` / `tokenMaxAgeMs` / `powMaxAgeMs`
+  - `powBaseDifficulty` / `powRiskStep` / `powMaxDifficulty`
+
+### Changed
+- Changed `challenge/init` call chain to request-aware invocation:
+  - `GydevGuardController.initChallenge(HttpServletRequest)`
+  - `GydevGuardService.initChallenge(HttpServletRequest)`
+  - `GydevTokenGuard.initChallenge(HttpServletRequest)`
+- Updated tests to match strict-mode flow and added regression cases for challenge reuse and fingerprint drift rejection.
+- Updated application metadata in `application.yml` for the new release version and publish timestamp.
+- Updated Maven project version in `pom.xml` to `0.1.51`.
+
 ## v0.1.50 - 2026-05-08
 
 ### Added
