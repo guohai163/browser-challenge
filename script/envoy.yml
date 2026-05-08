@@ -82,10 +82,18 @@ static_resources:
                           h2_settings: "%REQ(X-H2-SETTINGS)%"
                           h2_window: "%REQ(X-H2-WINDOW)%"
                           h2_priority: "%REQ(X-H2-PRIORITY)%"
-                          h2_fp_meta: "%DYNAMIC_METADATA(gydev.h2:fp)%"
-                          h2_settings_meta: "%DYNAMIC_METADATA(gydev.h2:settings)%"
-                          h2_window_meta: "%DYNAMIC_METADATA(gydev.h2:window)%"
-                          h2_priority_meta: "%DYNAMIC_METADATA(gydev.h2:priority)%"
+                          tls_ja3: "%TLS_JA3_FINGERPRINT%"
+                          tls_ja3_raw: "%TLS_JA3_RAW%"
+                          tls_ja3_normalized: "%TLS_JA3_NORMALIZED%"
+                          tls_ja3_md5_normalized: "%TLS_JA3_NORMALIZED_MD5%"
+                          tls_ja4: "%TLS_JA4_FINGERPRINT%"
+                          h2_fp_meta: "%DYNAMIC_METADATA([\"gydev.h2\",\"fp\"])%"
+                          h2_settings_meta: "%DYNAMIC_METADATA([\"gydev.h2\",\"settings\"])%"
+                          h2_window_meta: "%DYNAMIC_METADATA([\"gydev.h2\",\"window\"])%"
+                          h2_priority_meta: "%DYNAMIC_METADATA([\"gydev.h2\",\"priority\"])%"
+                          ja3_raw_meta: "%DYNAMIC_METADATA([\"envoy.filters.listener.tls_inspector\",\"ja3_raw\"])%"
+                          ja3_normalized_meta: "%DYNAMIC_METADATA([\"envoy.filters.listener.tls_inspector\",\"ja3_normalized\"])%"
+                          ja3_md5_normalized_meta: "%DYNAMIC_METADATA([\"envoy.filters.listener.tls_inspector\",\"ja3_md5_normalized\"])%"
 
                 route_config:
                   name: local_route
